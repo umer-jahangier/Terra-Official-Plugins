@@ -1,0 +1,8 @@
+{{- if .Values.install_snapshot_api }}
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: longhorn
+driver: driver.longhorn.io
+deletionPolicy: Delete
+{{- end }}
