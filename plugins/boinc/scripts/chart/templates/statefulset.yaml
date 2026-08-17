@@ -105,7 +105,7 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
             - name: SUBFOLDER
-              value: "/polaris/{{ .Values.name }}/"
+              value: "/{{ .Release.Namespace }}/polaris/{{ .Values.name }}/"
             {{- range .Values.env }}
             - name: {{ .name | quote }}
               value: {{ .value | quote }}

@@ -13,7 +13,7 @@ spec:
     - host: {{ .Values.host }}
       http:
         paths:
-          - path: "/opencode/{{ .Values.name }}/"
+          - path: "/{{ .Release.Namespace }}/opencode/{{ .Values.name }}/"
             pathType: Prefix
             backend:
               service:

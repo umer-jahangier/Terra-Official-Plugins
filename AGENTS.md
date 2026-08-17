@@ -389,6 +389,41 @@ manages the workload. All keys use the `kuiper.juno-innovations.com/` prefix unl
 **These annotations only apply to workload template plugins.** Namespaced and cluster-level plugins
 are synced directly by ArgoCD and never pass through Kuiper — annotations have no effect there.
 
+### Ingress Path Convention
+
+Workload ingress paths should start with the release namespace:
+
+```yaml
+- path: "/{{ .Release.Namespace }}/<prefix>/{{ .Values.name }}/"
+```
+
+`<prefix>` is the plugin's own segment (`polaris`, `gitea`, `k9s`, …).
+
+The rule nginx actually enforces is that **host + path must be unique cluster-wide** — object names are
+namespaced, routing rules are not. So two environments sharing a hostname that both render
+`/polaris/<name>/` collide, and the second to launch is rejected by the ingress admission webhook.
+
+An environment given its own hostname (`<env>.example.com`) satisfies uniqueness through the host alone
+and does not strictly need the namespace segment. Include it anyway: this catalog is installed into many
+deployments, and a plugin author cannot know whether a given environment gets its own DNS or shares one.
+The prefix is harmless where it is redundant and required where it is not.
+
+Nothing rewrites the path before it reaches the pod — no chart sets `rewrite-target` — so the container
+receives the full URL and **every in-container reference must match the ingress path exactly**:
+
+| Where | Example |
+|-------|---------|
+| `PREFIX` env | `value: "/{{ .Release.Namespace }}/polaris/{{ .Values.name }}/"` |
+| nginx sidecar | `location /{{ .Release.Namespace }}/polaris/{{ .Values.name }}/ { … }` |
+| App base-url flags | `--baseURL`, `--ServerApp.base_url`, `ROOT_URL` |
+| Gateway API | `HTTPRoute` `URLRewrite` value |
+
+Changing the ingress alone routes the request to the pod, which then 404s because it is still serving at
+the old prefix — it fails *after* appearing to work.
+
+`ingress-hide` matches by **exact string** against the rendered path, so hide values must be the full
+namespaced path, not a bare sub-path. `ingress-extras` matches by prefix and appends the remainder.
+
 ### Ingress Authentication (nginx)
 
 Standard nginx ingress annotations required for platform-integrated authentication. Not Kuiper-specific.
@@ -516,6 +551,8 @@ All types above plus:
 | Hand-editing `packaged-scripts.yaml` | Overwritten next `make package` | Edit `scripts/` instead, then repackage |
 | `env_hints` entry duplicates a var already hardcoded in `workstation.yaml` | Misleading docs — the suggested var is silently shadowed by the platform-set one | Check `workstation.yaml`'s static env block before adding to `metadata.yaml` |
 | `env_hints` in `metadata.yaml` and `README.md` fall out of sync | Docs disagree with what Genesis actually suggests | Keep both lists identical; update together |
+| Ingress path omits `{{ .Release.Namespace }}` | Passes in a single-environment cluster; once a second environment shares the hostname, launches fail with an admission-webhook 400 (`host … and path … is already defined in ingress <ns>/<name>`) part-way through, leaving a partial workload to clean up | Prefix the path with `/{{ .Release.Namespace }}/` (see Ingress Path Convention) |
+| Ingress path changed without updating the in-container path | nginx routes to the pod correctly, then the app 404s or serves a page whose assets all 404 — fails *after* looking like it worked | Update `PREFIX`, nginx `location`/`rewrite`/`sub_filter`, `--baseURL`/`ROOT_URL`/`base_url` and `HTTPRoute` rewrites in the same pass |
 
 ---
 
@@ -546,7 +583,9 @@ All types above plus:
    - Edit `scripts/chart/values.yaml` — ensure all field names are present as keys
    - Edit `scripts/chart/templates/workstation.yaml` — set correct image, ports, probes; set `juno-innovations.com/workload` annotation to match `metadata.yaml`
    - Edit `scripts/chart/templates/service.yaml` — set correct `port`/`targetPort`
-   - Edit `scripts/chart/templates/ingress.yaml` — add Hubble auth annotations (`nginx.ingress.kubernetes.io/auth-url` pointing to Hubble, `use-regex: "true"`)
+   - Edit `scripts/chart/templates/ingress.yaml` — add Hubble auth annotations (`nginx.ingress.kubernetes.io/auth-url` pointing to Hubble, `use-regex: "true"`) and set the path to
+     `/{{ .Release.Namespace }}/<prefix>/{{ .Values.name }}/` (see Ingress Path Convention)
+   - Make every in-container reference to that path match it exactly — `PREFIX`, nginx sidecar `location`/`rewrite`/`sub_filter`, `--baseURL`/`ROOT_URL`/`base_url`, `HTTPRoute` rewrites. The ingress does not rewrite the path away
    - If `workstation.yaml` ranges over `.Values.env`, edit `templates/metadata.yaml`'s `env_hints:` key (or set it to `|` + `[]`)
      and mirror it in `README.md` under `### Custom Environment Variables` — see the `env_hints` guidance above
 7. `make package <plugin-name>` — **required** for any plugin with a `scripts/` directory

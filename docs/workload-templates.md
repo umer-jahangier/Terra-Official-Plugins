@@ -226,10 +226,14 @@ gpu: false
     **not** configure its ingress at the root path — doing so will clash with platform services and
     break routing for the entire cluster.
 
-    Your workload must support a URL prefix (e.g. `/{{ .Values.name }}/`) or another sub-path
-    routing strategy. The `PREFIX` environment variable is the conventional way to pass the base
-    path into the container — set it from `{{ .Values.host }}` or your chosen sub-path in
-    `workstation.yaml`.
+    Use a namespaced sub-path — `/{{ .Release.Namespace }}/<prefix>/{{ .Values.name }}/` — so that
+    environments sharing a hostname cannot claim the same route. See "Ingress Path Convention" in
+    `AGENTS.md` for the full rule and the one case where the namespace segment is optional.
+
+    Your workload must then actually serve at that prefix. Nothing rewrites the path before it
+    reaches the pod, so the container receives the full URL. The `PREFIX` environment variable is
+    the conventional way to pass the base path in — set it in `workstation.yaml` to exactly the
+    same value as the ingress path.
 
 ---
 

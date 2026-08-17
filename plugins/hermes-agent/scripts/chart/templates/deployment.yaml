@@ -40,6 +40,8 @@ spec:
           env:
             - name: NAME
               value: {{ .Values.name | quote }}
+            - name: NAMESPACE
+              value: {{ .Release.Namespace | quote }}
           volumeMounts:
             - name: hermes-data
               mountPath: /opt/data

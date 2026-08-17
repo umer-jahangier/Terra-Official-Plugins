@@ -15,7 +15,7 @@ spec:
     - matches:
         - path:
             type: PathPrefix
-            value: "/polaris/{{ .Values.name }}/"
+            value: "/{{ .Release.Namespace }}/polaris/{{ .Values.name }}/"
       backendRefs:
         - name: "{{ .Values.name }}-web-ide"
           port: 3000
