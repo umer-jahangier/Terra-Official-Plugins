@@ -76,11 +76,27 @@ These fields are configured when authoring the workload template in **Genesis** 
 | `clusterip` | No ingress — the application is only reachable in-cluster via its ClusterIP Service |
 | `nodeport` | Adds a NodePort Service in addition to the ClusterIP Service for direct node-level access |
 
+### Example Application
+
+A working example for every runtime lives in [`aldmbmtl/runtimes`](https://github.com/aldmbmtl/runtimes). Each language has its own
+top-level directory in that repository, so the build and run commands must point at `go/`:
+
+| Field | Value |
+|-------|-------|
+| `git_url` | `https://github.com/aldmbmtl/runtimes.git` |
+| `build_command` | `cd go && go build -o ../app .` |
+| `run_command` | `./app` |
+
+The example is a `net/http` server that reads `PREFIX` and listens on port `8080`, matching the default `port`.
+
+`build_command` and `run_command` are evaluated independently, each starting from the repository root — a
+`cd` in one does not carry over to the other.
+
 ---
 
 ## Notes
 
-- When exposed via ingress, the application is served under `/<namespace>/polaris/<workload-name>/`, where `<namespace>` is the environment the workload runs in (the same value is passed to the container as the `PREFIX` environment variable) — your application must handle or be configured for this path prefix
+- When exposed via ingress, the application is served under `/<namespace>/polaris/<workload-name>/`, where `<namespace>` is the environment the workload runs in. This full path is passed to the container as the `PREFIX` environment variable — your application must handle or be configured for this path prefix
 - `run_command` must start a foreground process that listens on `port`; if nothing listens, the startup probe fails and the workload restarts
 - Use `ingress-noauth` only for applications that implement their own authentication or run in trusted network environments
 - Private repositories are not supported by the built-in clone step — use `source_path` with a volume mount for private code
