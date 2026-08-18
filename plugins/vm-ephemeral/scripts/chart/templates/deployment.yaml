@@ -25,3 +25,11 @@ spec:
           ports:
             - containerPort: 8080
               name: endpoint
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /src/nginx.conf
+              subPath: nginx.conf
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: {{ .Values.name }}-console-nginx
