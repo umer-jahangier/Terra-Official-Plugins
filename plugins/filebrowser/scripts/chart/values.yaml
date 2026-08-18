@@ -22,12 +22,8 @@ plugins: []
 _kuiper:
 
 # Filebrowser settings
-workspace: ""
-root: "/data"
+root: "/"
 registry: "docker.io"
 repo: "filebrowser/filebrowser"
 tag: "latest"
 ingressNamespace: "ingress-nginx"
-dataPersistent: false
-storageClass: ""
-storageSize: "10Gi"
