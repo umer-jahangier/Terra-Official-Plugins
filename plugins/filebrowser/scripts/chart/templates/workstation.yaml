@@ -7,8 +7,6 @@ metadata:
     juno-innovations.com/workload: "Application"
   labels:
     juno-innovations.com/workstation: "{{ .Values.name }}"
-
-
 spec:
   replicas: 1
   selector:
@@ -25,12 +23,10 @@ spec:
       securityContext:
         fsGroup: {{ .Values.guid }}
       hostname: "{{ .Values.name }}"
-
       {{- if .Values.pullSecret }}
       imagePullSecrets:
         - name: "{{ .Values.pullSecret }}"
       {{- end }}
-
       containers:
         - name: filebrowser
           image: "{{ .Values.registry }}/{{ .Values.repo }}:{{ .Values.tag }}"
@@ -57,26 +53,20 @@ spec:
             - --root={{ .Values.root }}
             - --baseURL=/{{ .Release.Namespace }}/filebrowser/{{ .Values.name }}
             - --log=stdout
-            - --database=/data/filebrowser.db
+            - --database=/tmp/filebrowser.db
             - --username={{ .Values.user }}
             - --noauth
             - --cacheDir=/tmp/cache
-          env:
-            - name: JUNO
-              value: "true"
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
               drop:
                 - ALL
-            readOnlyRootFilesystem: true
             runAsNonRoot: true
             runAsUser: {{ .Values.puid }}
           volumeMounts:
             - name: config
               mountPath: /config
-            - name: filebrowser-data
-              mountPath: /data
             - name: tmp-cache
               mountPath: /tmp/cache
             {{- if .Values.volumeMounts }}
@@ -88,13 +78,6 @@ spec:
           emptyDir: {}
         - name: tmp-cache
           emptyDir: {}
-        - name: filebrowser-data
-          {{- if .Values.dataPersistent }}
-          persistentVolumeClaim:
-            claimName: "{{ .Values.name }}-data"
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
         {{- if .Values.volumes }}
         {{- toYaml .Values.volumes | nindent 8 }}
         {{- end }}
