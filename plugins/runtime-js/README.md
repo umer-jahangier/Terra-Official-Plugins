@@ -71,7 +71,7 @@ These fields are configured when authoring the workload template in **Genesis** 
 
 | Mode | Behavior |
 |------|----------|
-| `ingress-auth` | Exposes the application through the nginx ingress at `/polaris/<workload-name>/`, authenticated via Hubble |
+| `ingress-auth` | Exposes the application through the nginx ingress at `/<namespace>/polaris/<workload-name>/`, authenticated via Hubble |
 | `ingress-noauth` | Same ingress path, but **without authentication** — anyone who can reach the ingress can reach the app |
 | `clusterip` | No ingress — the application is only reachable in-cluster via its ClusterIP Service |
 | `nodeport` | Adds a NodePort Service in addition to the ClusterIP Service for direct node-level access |
@@ -80,7 +80,7 @@ These fields are configured when authoring the workload template in **Genesis** 
 
 ## Notes
 
-- When exposed via ingress, the application is served under `/polaris/<workload-name>/` (also passed to the container as the `PREFIX` environment variable) — your application must handle or be configured for this path prefix
+- When exposed via ingress, the application is served under `/<namespace>/polaris/<workload-name>/`, where `<namespace>` is the environment the workload runs in (the same value is passed to the container as the `PREFIX` environment variable) — your application must handle or be configured for this path prefix
 - `run_command` must start a foreground process that listens on `port`; if nothing listens, the startup probe fails and the workload restarts
 - Use `ingress-noauth` only for applications that implement their own authentication or run in trusted network environments
 - Private repositories are not supported by the built-in clone step — use `source_path` with a volume mount for private code

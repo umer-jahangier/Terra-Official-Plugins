@@ -13,8 +13,10 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
     nginx.ingress.kubernetes.io/proxy-next-upstream-timeout: "30"
     nginx.ingress.kubernetes.io/affinity: "cookie"
-    nginx.ingress.kubernetes.io/session-cookie-path: "/"
-    nginx.ingress.kubernetes.io/session-cookie-name: "juno-console-session-{{ .Values.name }}"
+    # Scoped to this workload's own path — same-named consoles in different
+    # namespaces share a hostname, so a cookie at "/" would collide between them.
+    nginx.ingress.kubernetes.io/session-cookie-path: "/{{ .Release.Namespace }}/kubevirt-console/{{ .Values.name }}/"
+    nginx.ingress.kubernetes.io/session-cookie-name: "juno-console-session-{{ .Release.Namespace }}-{{ .Values.name }}"
     nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
     nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
 spec:
