@@ -1,5 +1,0 @@
-apiVersion: v1
-description: Browser terminal onto a Slinky Slurm cluster
-name: slinky-login
-version: 0.0.0
-icon: https://raw.githubusercontent.com/juno-fx/Terra-Official-Plugins/refs/heads/main/plugins/slinky-login/scripts/assets/logo.png

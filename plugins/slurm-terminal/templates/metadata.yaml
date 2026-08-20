@@ -11,7 +11,7 @@ data:
   description: "Browser terminal onto a Slinky Slurm cluster"
   fields: |
     - name: icon
-      default: "https://raw.githubusercontent.com/juno-fx/Terra-Official-Plugins/refs/heads/main/plugins/slinky-login/scripts/assets/logo.png"
+      default: "https://raw.githubusercontent.com/juno-fx/Terra-Official-Plugins/refs/heads/main/plugins/slurm-terminal/scripts/assets/logo.png"
     - name: slurmNamespace
       description: "Namespace the Slurm cluster runs in. Only change this if you run more than one Slurm cluster; the login node's name is fixed, so the namespace is all that distinguishes them."
       type: string

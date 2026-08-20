@@ -268,7 +268,7 @@ connects to; it is `ClusterIP` by default, so nothing is exposed outside the clu
 
 ### From the Slurm Terminal workload (how end users get in)
 
-Install the companion **[Slurm Terminal](../slinky-login/README.md)** plugin. It adds a workload template that users
+Install the companion **[Slurm Terminal](../slurm-terminal/README.md)** plugin. It adds a workload template that users
 launch from Hubble: a browser terminal that SSHes into this cluster's login node and drops them at a shell where
 `sbatch` and friends work.
 

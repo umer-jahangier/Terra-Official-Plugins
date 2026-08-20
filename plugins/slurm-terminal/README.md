@@ -1,6 +1,6 @@
 # Slurm Terminal
 
-![Slurm Terminal](https://raw.githubusercontent.com/juno-fx/Terra-Official-Plugins/refs/heads/main/plugins/slinky-login/scripts/assets/logo.png)
+![Slurm Terminal](https://raw.githubusercontent.com/juno-fx/Terra-Official-Plugins/refs/heads/main/plugins/slurm-terminal/scripts/assets/logo.png)
 
 **Category:** Compute
 **Type:** Workload Template

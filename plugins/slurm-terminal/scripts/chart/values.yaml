@@ -1,5 +1,5 @@
 # Kuiper-injected standard values — do not remove
-name: slinky-login
+name: slurm-terminal
 user:
 group:
 cpu: "1"
