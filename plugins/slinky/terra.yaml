@@ -133,3 +133,15 @@ fields:
       by a publicly trusted CA - the login image already trusts those.
     required: false
     type: string
+  - name: home_pvc
+    description: |
+      Optional. Name of a ReadWriteMany PersistentVolumeClaim in cluster_namespace, mounted at /home on
+      the login node and on every compute node.
+
+      Slurm needs one shared filesystem visible at the same path everywhere: without it "cd ~" fails on
+      the login node, and a batch job writes its output on whichever compute node ran it, where you
+      cannot read it. Interactive srun still works either way.
+
+      The PVC must be RWX (many nodes mount it at once) and must already exist.
+    required: false
+    type: string

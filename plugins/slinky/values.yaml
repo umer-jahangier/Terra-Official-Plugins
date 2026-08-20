@@ -30,3 +30,6 @@ sssd_secret: ""
 
 # Optional CA bundle for an LDAP server with a private/self-signed certificate.
 ldap_ca_secret: ""
+
+# Optional RWX PVC mounted at /home on the login node and all compute nodes.
+home_pvc: ""

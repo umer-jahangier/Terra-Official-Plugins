@@ -72,10 +72,25 @@ spec:
                     {{- if gt (int .Values.worker_gpus) 0 }}
                     nvidia.com/gpu: {{ .Values.worker_gpus }}
                     {{- end }}
+                {{- if .Values.home_pvc }}
+                # Shared home directories. Compute nodes must see the same files at
+                # the same paths as the login node, or a job cannot read its inputs
+                # or write output the user can retrieve.
+                volumeMounts:
+                  - name: home
+                    mountPath: /home
+                {{- end }}
               {{- if gt (int .Values.worker_gpus) 0 }}
               extraConfMap:
                 Gres:
                   - "gpu:{{ .Values.worker_gpus }}"
+              {{- end }}
+              {{- if .Values.home_pvc }}
+              podSpec:
+                volumes:
+                  - name: home
+                    persistentVolumeClaim:
+                      claimName: {{ .Values.home_pvc | quote }}
               {{- end }}
           partitions:
             all:
@@ -97,20 +112,34 @@ spec:
           loginsets:
             slinky:
               enabled: true
-              {{- if .Values.ldap_ca_secret }}
-              # Trust a private/self-signed LDAP CA, so sssd.conf can use
-              # ldaps:// with ldap_tls_reqcert = demand instead of disabling
-              # certificate verification.
+              {{- if or .Values.ldap_ca_secret .Values.home_pvc }}
               login:
                 volumeMounts:
+                  {{- if .Values.home_pvc }}
+                  # Same shared home the compute nodes mount, at the same path.
+                  - name: home
+                    mountPath: /home
+                  {{- end }}
+                  {{- if .Values.ldap_ca_secret }}
+                  # Trust a private/self-signed LDAP CA, so sssd.conf can use
+                  # ldaps:// with ldap_tls_reqcert = demand instead of disabling
+                  # certificate verification.
                   - name: ldap-ca
                     mountPath: /etc/ssl/ldap-ca
                     readOnly: true
+                  {{- end }}
               podSpec:
                 volumes:
+                  {{- if .Values.home_pvc }}
+                  - name: home
+                    persistentVolumeClaim:
+                      claimName: {{ .Values.home_pvc | quote }}
+                  {{- end }}
+                  {{- if .Values.ldap_ca_secret }}
                   - name: ldap-ca
                     secret:
                       secretName: {{ .Values.ldap_ca_secret | quote }}
+                  {{- end }}
               {{- end }}
               {{- if .Values.login_ssh_public_key }}
               rootSshAuthorizedKeys: {{ .Values.login_ssh_public_key | quote }}
