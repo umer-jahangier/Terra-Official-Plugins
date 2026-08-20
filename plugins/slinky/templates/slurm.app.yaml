@@ -24,6 +24,11 @@ spec:
       helm:
         releaseName: {{ .Release.Name }}-slurm
         values: |
+          # Pin resource names so they do not inherit the Terra release name.
+          # The login Service is then always "slurm-login-slinky" in this
+          # namespace, which is what lets the Slurm Login workload find it
+          # without anyone having to look the name up.
+          fullnameOverride: slurm
           {{- if gt (int .Values.worker_gpus) 0 }}
           configFiles:
             gres.conf: |

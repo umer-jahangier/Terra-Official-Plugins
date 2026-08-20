@@ -84,10 +84,12 @@ spec:
             # binaries or credentials exist in this pod.
             - name: SLURM_NAMESPACE
               value: "{{ .Values.slurmNamespace }}"
+            # Fixed by the Slinky plugin, which pins fullnameOverride=slurm so the
+            # login node's name never depends on the Terra release name.
             - name: SLURM_LOGIN_SERVICE
-              value: "{{ .Values.loginService }}"
+              value: "slurm-login-slinky"
             - name: SLURM_LOGIN_PORT
-              value: "{{ .Values.loginPort }}"
+              value: "22"
             {{- range .Values.env }}
             - name: {{ .name | quote }}
               value: {{ .value | quote }}

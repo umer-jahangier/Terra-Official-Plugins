@@ -90,9 +90,7 @@ No install-time configuration is required for this plugin.
 
 | Field | Details |
 |-------|---------|
-| `slurmNamespace` | **string** · Required · Default: `slurm`<br>Namespace the Slurm cluster runs in — must match the Slinky plugin's `cluster_namespace` |
-| `loginService` | **string** · Required · *(no default)*<br>Name of the login node Service. It depends on the Slinky release name, so there is deliberately no default — look it up with `kubectl get svc -n <slurmNamespace> \| grep login`. For a Slinky release named `<name>` it is `<name>-slurm-login-slinky` |
-| `loginPort` | **int** · Required · Default: `22`<br>SSH port on the login node Service |
+| `slurmNamespace` | **string** · Required · Default: `slurm`<br>Namespace the Slurm cluster runs in. Only change this if you run more than one Slurm cluster — the login node's name is fixed, so the namespace is the only thing that distinguishes them |
 | `registry` | **string** · Required · Default: `wettyoss`<br>Registry for the terminal image |
 | `repo` | **string** · Required · Default: `wetty`<br>Repository for the terminal image |
 | `tag` | **string** · Required · Default: `2.5`<br>Tag for the terminal image |
@@ -109,17 +107,13 @@ affecting the session belongs in that node's profile rather than in workload env
 
 ---
 
-## Finding the Login Service Name
+## Where It Connects
 
-There is no default for `loginService`, because the name depends on the Slinky release name. Find yours with:
+Always `slurm-login-slinky.<slurmNamespace>.svc.cluster.local:22`.
 
-```sh
-kubectl get svc -n slurm -l app.kubernetes.io/part-of=slurm | grep login
-```
-
-Use that Service name for the `loginService` field.
-
----
+The Slinky plugin pins `fullnameOverride: slurm` on the Slurm chart, so the login node's name never inherits the
+Terra release name. That is why there is no service-name field to fill in or get wrong — the only thing you would
+change is `slurmNamespace`, and only if you run more than one Slurm cluster.
 
 ## Using the Session
 

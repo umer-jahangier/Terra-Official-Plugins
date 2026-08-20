@@ -40,4 +40,4 @@ spec:
               kubernetes.io/metadata.name: {{ .Values.slurmNamespace }}
       ports:
         - protocol: TCP
-          port: {{ .Values.loginPort }}
+          port: 22
