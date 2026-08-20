@@ -1,4 +1,3 @@
-{{- if .Values.deploy_cluster }}
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -101,4 +100,3 @@ spec:
     syncOptions:
       - ServerSideApply=true
       - CreateNamespace=true
-{{- end }}

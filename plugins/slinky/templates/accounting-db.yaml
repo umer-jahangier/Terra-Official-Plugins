@@ -1,4 +1,4 @@
-{{- if and .Values.deploy_cluster .Values.accounting_enabled }}
+{{- if .Values.accounting_enabled }}
 {{- if not .Values.accounting_db_password }}
 {{- fail "accounting_enabled is true but accounting_db_password is empty - set a password for the Slurm accounting database" }}
 {{- end }}

@@ -67,8 +67,8 @@ fields:
     type: string
     secret: true
   - name: sssd_secret
-    description: Name of a Secret in the Slurm namespace holding an `sssd.conf` under key `sssd.conf`, giving the login node user identity. Create it before installing — see the Slinky plugin README for the file's structure. Leave empty for local accounts only.
-    required: false
+    description: "PREREQUISITE: name of a Secret in the Slurm namespace holding an `sssd.conf` under key `sssd.conf`. Create it before installing — see the Slinky plugin README for the file's structure and a worked LDAP example. Without it no one can log in to the cluster."
+    required: true
     type: string
 plugins:
   # Release name "slinky" matters: it determines the Slurm login Service name

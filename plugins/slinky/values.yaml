@@ -5,8 +5,7 @@ chart_version: 1.2.1
 install_crds: true
 install_operator: true
 
-# Slurm cluster
-deploy_cluster: true
+# Slurm cluster - always deployed. Namespace is per-cluster (see multi-cluster in the README).
 cluster_namespace: slurm
 
 # Compute nodes (NodeSet)
@@ -26,5 +25,5 @@ login_ssh_public_key: ""
 accounting_enabled: false
 accounting_db_password: ""
 
-# Login node user identity - name of a Secret holding sssd.conf (see README).
+# Login node user identity - name of a Secret holding sssd.conf (see README). Required.
 sssd_secret: ""

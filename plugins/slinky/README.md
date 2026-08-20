@@ -82,16 +82,92 @@ cluster.
 
 ## Prerequisites
 
+### Required: the directory Secret
+
+`sssd_secret` names a Secret holding an `sssd.conf` — the config the login node uses to resolve and authenticate your
+users. It must exist **before you install**, in `cluster_namespace`, under the key `sssd.conf`.
+
+You do not need to create a file. Fill in the five marked values and paste the whole block:
+
+```sh
+kubectl create namespace slurm
+
+kubectl create secret generic slurm-sssd-conf -n slurm --from-file=sssd.conf=/dev/stdin <<'EOF'
+[sssd]
+services = nss,pam
+domains = LDAP
+
+[nss]
+filter_groups = root,slurm
+filter_users = root,slurm
+default_shell = /bin/bash
+fallback_homedir = /home/%u
+
+[pam]
+
+[domain/LDAP]
+id_provider = ldap
+auth_provider = ldap
+
+# ---- CHANGE THESE ----
+ldap_uri = ldaps://ldap.example.com:636
+ldap_search_base = dc=example,dc=org
+ldap_default_bind_dn = cn=admin,dc=example,dc=org
+ldap_default_authtok = CHANGEME
+# ----------------------
+
+ldap_schema = rfc2307
+ldap_user_name = uid
+
+# Verify the directory's certificate. If your server only speaks plain ldap:// on
+# 389, use ldap_id_use_start_tls = true instead; failing that set reqcert to
+# "never", but note every user password then crosses the network in cleartext.
+ldap_tls_reqcert = demand
+
+cache_credentials = true
+enumerate = true
+EOF
+```
+
+Then set `sssd_secret` to `slurm-sssd-conf` at install time.
+
+Nothing is written to disk — `/dev/stdin` streams the config straight into `kubectl`, and the contents are stored in
+the Secret. There is no file to keep or clean up. Do note that the block lands in your shell history with the bind
+password in it: prefix the command with a space (zsh skips those with `HIST_IGNORE_SPACE`), or run `set +o history`
+first.
+
+**Why a Secret rather than plugin fields?** SSSD requires the bind password inside `sssd.conf` itself — it cannot read
+it from a Secret or environment variable. If the plugin collected the password as a field, it would be rendered into
+the ArgoCD `Application` spec in plaintext, readable by anyone with ArgoCD access. Passing the assembled file as a
+Secret keeps the credential out of every intermediate resource.
+
+> The Secret lives in a namespace this plugin owns. Uninstalling the plugin deletes that namespace and everything in
+> it, including this Secret and the controller's state-save volume.
+
+**Your directory entries need POSIX attributes** — `objectClass: posixAccount` with `uidNumber`, `gidNumber` and
+ideally `homeDirectory`. Without them the bind succeeds but users do not resolve and SSH rejects the login. The
+`default_shell` and `fallback_homedir` lines above cover directories that omit `loginShell`/`homeDirectory`. Check
+with:
+
+```sh
+ldapsearch -x -LLL -H <ldap_uri> -D "<bind_dn>" -W \
+  -b "<search_base>" "(objectClass=posixAccount)" uid uidNumber gidNumber
+```
+
+### Also required
+
 - **Kubernetes v1.29 or newer** (Slinky v1.2 compatibility matrix)
 - **A default StorageClass**, or a StorageClass named in `storage_class` — the controller persists `slurmctld`
-  state-save data to a PVC
+  state-save data to a PVC, and the accounting database needs one too
+
+### Conditional
+
 - **NVIDIA GPU Operator plugin** if `worker_gpus` is greater than `0`
 - **MetalLB plugin** (or another load balancer controller) *only* if you change `login_service_type` to
   `LoadBalancer` — the default `ClusterIP` needs nothing
 
 Nothing else is required — in particular, **cert-manager is not needed**. The accounting database is deployed by this
-plugin and the operator's webhook certificate is self-signed in-cluster, so a default install has no external
-dependencies at all.
+plugin and the operator's webhook certificate is self-signed in-cluster, so there are no external dependencies.
 
 ---
 
@@ -109,32 +185,29 @@ dependencies at all.
 
 ### Install-Time Fields
 
-Only `chart_version` and `login_service_type` are marked required — the latter because Terra requires a value for
-every `select` field, not because it usually needs changing. Everything else is optional. The fields below the
-`deploy_cluster` line describe the Slurm cluster and are ignored entirely when `deploy_cluster` is off; Terra has no
-conditional fields, so they stay visible on the form regardless.
+Three fields are required: `chart_version`, `sssd_secret` (the directory config Secret, which must exist before you
+install — see [Prerequisites](#prerequisites)), and `login_service_type` (only because Terra requires a value for
+every `select`; the `ClusterIP` default is almost always right). Everything else has a working default.
 
-A login node is always deployed. It is the submit host the Slurm Login workload connects to, and without it the
-cluster is reachable only via `kubectl exec` or `slurmrestd`. It is `ClusterIP` by default, so it is not exposed
-outside the cluster.
+Every install deploys a Slurm cluster and a login node. The login node is the submit host the Slurm Login workload
+connects to; it is `ClusterIP` by default, so nothing is exposed outside the cluster.
 
 | Field | Details |
 |-------|---------|
 | `chart_version` | **select** · Required · Default: `1.2.1`<br>Version applied to all three Slinky charts |
 | `install_crds` | **boolean** · Optional · Default: `true`<br>Install the Slinky CRDs. Set `false` on any additional install so it does not contend with the first one over cluster-scoped CRDs |
 | `install_operator` | **boolean** · Optional · Default: `true`<br>Install the operator and webhook into the `slinky` namespace. The operator is a cluster singleton |
-| `deploy_cluster` | **boolean** · Optional · Default: `true`<br>Deploy a Slurm cluster. `false` installs only the operator, leaving you to manage Slinky CRs yourself |
-| `cluster_namespace` | **string** · Optional · Default: `slurm`<br>Namespace for the Slurm cluster. Use a distinct value per cluster. Ignored when `deploy_cluster` is off |
-| `worker_replicas` | **int** · Optional · Default: `2`<br>Number of `slurmd` compute node pods. Supports scale-to-zero. Ignored when `deploy_cluster` is off |
-| `worker_cpu` | **string** · Optional · Default: `2`<br>CPU request and limit per compute node. Becomes the node's CPU count in Slurm. Ignored when `deploy_cluster` is off |
-| `worker_memory` | **string** · Optional · Default: `4Gi`<br>Memory request and limit per compute node. Becomes the node's `RealMemory` in Slurm. Ignored when `deploy_cluster` is off |
+| `cluster_namespace` | **string** · Optional · Default: `slurm`<br>Namespace for the Slurm cluster. Use a distinct value per cluster — see [Multiple Slurm Clusters](#multiple-slurm-clusters) |
+| `worker_replicas` | **int** · Optional · Default: `2`<br>Number of `slurmd` compute node pods. Supports scale-to-zero |
+| `worker_cpu` | **string** · Optional · Default: `2`<br>CPU request and limit per compute node. Becomes the node's CPU count in Slurm |
+| `worker_memory` | **string** · Optional · Default: `4Gi`<br>Memory request and limit per compute node. Becomes the node's `RealMemory` in Slurm |
 | `worker_gpus` | **int** · Optional · Default: `0`<br>NVIDIA GPUs per compute node. Above `0` this also sets `GresTypes=gpu`, `Gres=gpu:<n>` and `gres.conf` `AutoDetect=nvidia` |
 | `storage_class` | **string** · Optional · Default: *(empty)*<br>StorageClass for the `slurmctld` state-save PVC. Empty uses the cluster default |
 | `login_service_type` | **select** · Required · Default: `ClusterIP`<br>How the login node's SSH port is exposed. `ClusterIP` suffices when users connect via the Slurm Login workload; use `LoadBalancer` or `NodePort` only for SSH from outside the cluster. Terra requires a value for every `select`, so keep the default unless you need external SSH |
 | `login_ssh_public_key` | **string** · Optional · Default: *(empty)*<br>An SSH public key for root on the login node. Only usable for direct `ssh -i` from outside the cluster — the Slurm Login workload authenticates by password, so this grants no access through the browser terminal |
 | `accounting_enabled` | **boolean** · Optional · Default: `false`<br>Deploy `slurmdbd` plus a bundled MariaDB — see [Accounting](#accounting) |
 | `accounting_db_password` | **string** (secret) · Optional · Default: *(empty)*<br>Password for the `slurm` accounting database user. Required when accounting is enabled |
-| `sssd_secret` | **string** · Optional · Default: *(empty)*<br>Name of a Secret in `cluster_namespace` holding `sssd.conf`, giving the login node user identity — see [User Identity on the Login Node](#user-identity-on-the-login-node). Empty means local accounts only |
+| `sssd_secret` | **string** · **Required** · *(no default)*<br>Name of a Secret in `cluster_namespace` holding `sssd.conf`. **Create it before installing** — see [Prerequisites](#prerequisites). Without it no one can log in |
 
 ---
 
@@ -206,6 +279,7 @@ cluster, install this plugin again with:
 - `install_crds` → `false`
 - `install_operator` → `false`
 - `cluster_namespace` → a namespace not already in use
+- `sssd_secret` → a Secret you have created in *that* namespace
 
 The single operator installed by the first release reconciles every Slurm cluster in the Kubernetes cluster.
 
@@ -252,58 +326,9 @@ defaults from this chart.
 
 ### Create the Secret
 
-The Secret must live in `cluster_namespace` and use the key `sssd.conf`. Create the namespace first if it does not
-exist yet — the plugin will adopt it on install:
-
-```sh
-kubectl create namespace slurm
-kubectl create secret generic slurm-sssd-conf \
-  --namespace slurm \
-  --from-file=sssd.conf=./sssd.conf
-```
-
-Then set `sssd_secret` to `slurm-sssd-conf`.
-
-> Install the plugin **after** the Secret exists. The login pod mounts it at startup and will not become ready if it
-> is missing. If you have already installed, create the Secret and then edit `sssd_secret` — the plugin is `editable`.
-
-### What `sssd.conf` should contain
-
-A working example against an OpenLDAP directory, **with TLS verified**:
-
-```ini
-[sssd]
-services = nss,pam
-domains = LDAP
-
-[nss]
-filter_groups = root,slurm
-filter_users = root,slurm
-
-[pam]
-
-[domain/LDAP]
-id_provider = ldap
-auth_provider = ldap
-
-ldap_uri = ldaps://simple-ldap.simple-ldap.svc.cluster.local:636
-ldap_search_base = dc=example,dc=org
-
-# Omit both lines for an anonymous bind.
-ldap_default_bind_dn = cn=admin,dc=example,dc=org
-ldap_default_authtok = CHANGEME
-
-# Verify the directory's certificate. Mount your CA into the login pod and point at it here.
-ldap_tls_reqcert = demand
-ldap_tls_cacert = /etc/ssl/certs/ca-certificates.crt
-
-cache_credentials = true
-enumerate = true
-```
-
-If you must use plain `ldap://`, set `ldap_id_use_start_tls = true` so the connection is upgraded — otherwise every
-user's password crosses the pod network in cleartext on each login, since `auth_provider = ldap` authenticates by
-binding as the user.
+See [Prerequisites](#prerequisites) for a single paste-able command. The Secret must live in `cluster_namespace` under
+the key `sssd.conf`, because the LoginSet's `sssdConfRef` is an ordinary Kubernetes Secret reference and those cannot
+cross namespaces.
 
 ### Your entries need POSIX attributes
 
