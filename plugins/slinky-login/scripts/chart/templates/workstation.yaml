@@ -1,0 +1,123 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: "{{ .Values.name }}"
+  labels:
+    kuiper.juno-innovations.com/kuiper-instance: "{{ .Values.name }}"
+  annotations:
+    juno-innovations.com/workload: "Terminal"
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      kuiper.juno-innovations.com/kuiper-instance: "{{ .Values.name }}"
+
+  template:
+    metadata:
+      labels:
+        kuiper.juno-innovations.com/kuiper-instance: "{{ .Values.name }}"
+      annotations:
+        juno-innovations.com/workload: "Terminal"
+
+    spec:
+      hostname: "{{ .Values.name }}"
+      {{- if .Values.pullSecret }}
+      imagePullSecrets:
+        - name: "{{ .Values.pullSecret }}"
+      {{- end }}
+      containers:
+        - name: nginx
+          image: "{{ .Values.nginx_registry }}/{{ .Values.nginx_repo }}:{{ .Values.nginx_tag }}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3001
+              name: nginx
+          volumeMounts:
+            - name: nginx
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+        - name: terminal
+          image: "{{ .Values.registry }}/{{ .Values.repo }}:{{ .Values.tag }}"
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+          args:
+            - /system.sh
+          ports:
+            - containerPort: 3000
+              name: viewer
+          resources:
+            requests:
+              cpu: "{{ .Values.cpu }}"
+              memory: "{{ .Values.memory }}"
+            {{- if or .Values.cpuLimit .Values.memoryLimit }}
+            limits:
+              {{- if .Values.cpuLimit }}
+              cpu: "{{ .Values.cpuLimit }}"
+              {{- end }}
+              {{- if .Values.memoryLimit }}
+              memory: "{{ .Values.memoryLimit }}"
+              {{- end }}
+            {{- end }}
+          env:
+            - name: JUNO_WORKSTATION
+              value: "{{ .Values.name }}"
+            - name: JUNO_WORKSPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            # Retained for backwards compatibility with older platform components.
+            - name: JUNO_PROJECT
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: USER
+              value: "{{ .Values.user }}"
+            - name: HOME
+              value: "/home/{{ .Values.user }}"
+            - name: PREFIX
+              value: "/slurm/{{ .Values.name }}"
+            - name: WORKSTATION_NAME
+              value: "{{ .Values.name }}"
+            # Where the Slurm login node lives. The terminal SSHes here; no Slurm
+            # binaries or credentials exist in this pod.
+            - name: SLURM_NAMESPACE
+              value: "{{ .Values.slurmNamespace }}"
+            - name: SLURM_LOGIN_SERVICE
+              value: "{{ .Values.loginService }}"
+            - name: SLURM_LOGIN_PORT
+              value: "{{ .Values.loginPort }}"
+            {{- range .Values.env }}
+            - name: {{ .name | quote }}
+              value: {{ .value | quote }}
+            {{- end }}
+          volumeMounts:
+            - name: tooling
+              mountPath: /system.sh
+              subPath: system.sh
+              readOnly: true
+            {{- range .Values.plugins }}
+            - name: "{{ . }}"
+              mountPath: "/opt/juno/plugins/{{ . }}"
+            {{- end }}
+            {{- if .Values.volumeMounts }}
+            {{- toYaml .Values.volumeMounts | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: tooling
+          configMap:
+            name: "{{ .Values.name }}-tooling"
+            defaultMode: 0555
+        - name: nginx
+          configMap:
+            name: "{{ .Values.name }}-nginx"
+        {{- range .Values.plugins }}
+        - name: "{{ . }}"
+          configMap:
+            name: "{{ . }}"
+            defaultMode: 0555
+        {{- end }}
+        {{- if .Values.volumes }}
+        {{- toYaml .Values.volumes | nindent 8 }}
+        {{- end }}

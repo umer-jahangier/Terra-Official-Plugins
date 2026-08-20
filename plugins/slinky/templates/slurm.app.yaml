@@ -1,0 +1,120 @@
+{{- if .Values.deploy_cluster }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Release.Name }}-slurm
+  namespace: argocd
+  annotations:
+    # Wave 2 - the Slurm cluster is made of Slinky CRs, so it needs both the CRDs
+    # and a running operator before it can reconcile.
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+    - post-delete-finalizer.argocd.argoproj.io
+    - post-delete-finalizer.argocd.argoproj.io/cleanup
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.cluster_namespace }}
+  sources:
+    - repoURL: ghcr.io/slinkyproject/charts
+      chart: slurm
+      targetRevision: {{ .Values.chart_version }}
+      helm:
+        releaseName: {{ .Release.Name }}-slurm
+        values: |
+          {{- if gt (int .Values.worker_gpus) 0 }}
+          configFiles:
+            gres.conf: |
+              AutoDetect=nvidia
+          {{- end }}
+          controller:
+            persistence:
+              enabled: true
+              {{- if .Values.storage_class }}
+              storageClassName: {{ .Values.storage_class | quote }}
+              {{- end }}
+              resources:
+                requests:
+                  storage: {{ .Values.state_size | quote }}
+            {{- if gt (int .Values.worker_gpus) 0 }}
+            extraConfMap:
+              GresTypes:
+                - gpu
+            {{- end }}
+          accounting:
+            enabled: {{ .Values.accounting_enabled }}
+          nodesets:
+            slinky:
+              enabled: true
+              replicas: {{ .Values.worker_replicas }}
+              slurmd:
+                resources:
+                  requests:
+                    cpu: {{ .Values.worker_cpu | quote }}
+                    memory: {{ .Values.worker_memory | quote }}
+                  limits:
+                    cpu: {{ .Values.worker_cpu | quote }}
+                    memory: {{ .Values.worker_memory | quote }}
+                    {{- if gt (int .Values.worker_gpus) 0 }}
+                    nvidia.com/gpu: {{ .Values.worker_gpus }}
+                    {{- end }}
+              {{- if gt (int .Values.worker_gpus) 0 }}
+              extraConfMap:
+                Gres:
+                  - "gpu:{{ .Values.worker_gpus }}"
+              {{- end }}
+          partitions:
+            all:
+              enabled: true
+              nodesets:
+                - ALL
+          {{- if and .Values.login_enabled .Values.ldap_uri }}
+          sssd:
+            conf: |
+              [sssd]
+              services = nss,pam
+              domains = LDAP
+
+              [nss]
+              filter_groups = root,slurm
+              filter_users = root,slurm
+
+              [pam]
+
+              [domain/LDAP]
+              id_provider = ldap
+              auth_provider = ldap
+              ldap_uri = {{ .Values.ldap_uri }}
+              ldap_search_base = {{ .Values.ldap_search_base }}
+              {{- if .Values.ldap_bind_dn }}
+              ldap_default_bind_dn = {{ .Values.ldap_bind_dn }}
+              ldap_default_authtok = {{ .Values.ldap_bind_password }}
+              {{- end }}
+              ldap_id_use_start_tls = false
+              ldap_tls_reqcert = never
+              cache_credentials = true
+              enumerate = true
+          {{- end }}
+          {{- if .Values.login_enabled }}
+          loginsets:
+            slinky:
+              enabled: true
+              {{- if .Values.login_ssh_public_key }}
+              rootSshAuthorizedKeys: {{ .Values.login_ssh_public_key | quote }}
+              {{- end }}
+              service:
+                spec:
+                  type: {{ .Values.login_service_type }}
+          {{- end }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - ServerSideApply=true
+      - CreateNamespace=true
+{{- end }}

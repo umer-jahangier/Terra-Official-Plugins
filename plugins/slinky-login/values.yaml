@@ -1,0 +1,3 @@
+# This plugin installs a workload template ConfigMap only. It has no
+# install-time configuration - every setting is chosen at launch time in Hubble
+# from the schema in templates/metadata.yaml.

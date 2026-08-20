@@ -1,0 +1,124 @@
+resource_id: slinky-bundle
+name: Slinky Bundle
+icon: https://raw.githubusercontent.com/juno-fx/Terra-Official-Plugins/refs/heads/main/plugins/slinky/assets/logo.png
+description: |
+  A single install bundle for a complete Slurm-on-Kubernetes setup: the Slinky operator, a running
+  Slurm cluster, and the browser terminal users launch to submit jobs.
+
+  Slinky is SchedMD's toolkit for running Slurm and Kubernetes together. The operator deploys a real
+  Slurm cluster as pods — slurmctld, slurmd compute nodes, a login node and slurmrestd — so HPC batch
+  jobs and container workloads share the same hardware. Users interact with it exactly as they would
+  on bare metal: sbatch, srun, squeue, sinfo, MPI, fairshare and preemption all work normally.
+
+  The Slurm Login workload template is installed alongside it. Users launch their own session from
+  Hubble and get a browser terminal on the Slurm login node, signed in as themselves. That terminal
+  holds no Slurm credentials of its own — it connects over SSH to the login node deployed here, so
+  the cluster auth key never leaves the Slurm namespace.
+
+  Accounting deploys its own MariaDB database, and the operator's webhook certificate is self-signed
+  in-cluster, so a default install has no external dependencies.
+category: Bundle
+tags:
+  - slurm
+  - slinky
+  - hpc
+  - scheduler
+  - batch
+  - terminal
+  - cluster-level
+fields:
+  - name: cluster_namespace
+    description: Namespace the Slurm cluster is deployed into.
+    required: true
+    default: slurm
+    type: string
+  - name: worker_replicas
+    description: Number of Slurm compute nodes (slurmd pods) to run. Can be scaled to zero later.
+    required: true
+    default: 2
+    type: int
+  - name: worker_cpu
+    description: CPU request and limit per compute node, e.g. "2" or "500m". This is what Slurm sees as the node's CPU count.
+    required: true
+    default: "2"
+    type: string
+  - name: worker_memory
+    description: Memory request and limit per compute node, e.g. "4Gi". This is what Slurm sees as the node's RealMemory.
+    required: true
+    default: 4Gi
+    type: string
+  - name: worker_gpus
+    description: NVIDIA GPUs per compute node. Set to 0 for a CPU-only cluster. Above 0 requires the NVIDIA GPU Operator plugin.
+    required: false
+    default: 0
+    type: int
+  - name: storage_class
+    description: StorageClass for the controller state-save volume and the accounting database. Leave empty for the cluster default.
+    required: false
+    default: ""
+    type: string
+  - name: accounting_enabled
+    description: Deploy slurmdbd for job accounting (sacct, fairshare, QoS). A MariaDB database is deployed with it automatically.
+    required: false
+    default: false
+    type: boolean
+  - name: accounting_db_password
+    description: Password for the "slurm" accounting database user. Required when accounting is enabled. Choose it once — changing it later will not update the credential already stored in the database.
+    required: false
+    default: ""
+    type: string
+    secret: true
+  - name: ldap_uri
+    description: LDAP URI for login node user identity, e.g. `ldap://simple-ldap.argocd.svc.cluster.local:389`. Leave empty for local accounts only, in which case ordinary users cannot sign in.
+    required: false
+    default: ""
+    type: string
+  - name: ldap_search_base
+    description: LDAP search base DN, e.g. `dc=example,dc=org`. Required when an LDAP URI is set.
+    required: false
+    default: ""
+    type: string
+  - name: ldap_bind_dn
+    description: Bind DN used to query the directory, e.g. `cn=admin,dc=example,dc=org`. Leave empty for anonymous bind.
+    required: false
+    default: ""
+    type: string
+  - name: ldap_bind_password
+    description: Password for the bind DN. Leave empty for anonymous bind.
+    required: false
+    default: ""
+    type: string
+    secret: true
+plugins:
+  # Release name "slinky" matters: it determines the Slurm login Service name
+  # ("slinky-slurm-login-slinky"), which is the default the Slurm Login workload
+  # template connects to.
+  - plugin: Slinky
+    name: slinky
+    values:
+      cluster_namespace:
+        reference: cluster_namespace
+      worker_replicas:
+        reference: worker_replicas
+      worker_cpu:
+        reference: worker_cpu
+      worker_memory:
+        reference: worker_memory
+      worker_gpus:
+        reference: worker_gpus
+      storage_class:
+        reference: storage_class
+      accounting_enabled:
+        reference: accounting_enabled
+      accounting_db_password:
+        reference: accounting_db_password
+      ldap_uri:
+        reference: ldap_uri
+      ldap_search_base:
+        reference: ldap_search_base
+      ldap_bind_dn:
+        reference: ldap_bind_dn
+      ldap_bind_password:
+        reference: ldap_bind_password
+  - plugin: Slurm Login
+    name: slinky-login

@@ -1,0 +1,164 @@
+resource_id: slinky
+name: Slinky
+icon: https://raw.githubusercontent.com/juno-fx/Terra-Official-Plugins/refs/heads/main/plugins/slinky/assets/logo.png
+description: |
+  Run a real Slurm cluster on Kubernetes. SchedMD's Slurm operator deploys slurmctld, slurmd
+  compute nodes, login nodes and slurmrestd as pods, so HPC batch jobs (sbatch/srun) and
+  container workloads share the same hardware. https://slurm.schedmd.com/slinky.html
+category: Compute
+tags:
+  - slurm
+  - hpc
+  - scheduler
+  - batch
+  - operator
+  - cluster-level
+editable: true
+fields:
+  - name: chart_version
+    description: Version of the Slinky charts to install. All three charts (CRDs, operator, Slurm cluster) are installed at this version.
+    required: true
+    type: select
+    default: 1.2.1
+    options:
+      - 1.2.1
+      - 1.2.0
+      - 1.1.2
+  - name: install_crds
+    description: |
+      Install the Slinky Custom Resource Definitions (Controller, NodeSet, LoginSet, Accounting,
+      RestApi, Token). Leave true for the first install in a cluster. Set false on any additional
+      install so it does not fight the first one over shared, cluster-scoped CRDs.
+    required: false
+    type: boolean
+    default: true
+  - name: install_operator
+    description: |
+      Install the slurm-operator controller and webhook into the "slinky" namespace. The operator is a
+      cluster singleton - leave true for the first install, and set false when installing this plugin
+      again purely to add a second Slurm cluster.
+    required: false
+    type: boolean
+    default: true
+  - name: cert_manager
+    description: |
+      Issue the operator webhook's TLS certificate with cert-manager instead of the chart's own
+      self-signed CA. Leave false to keep the install self-contained - the chart then generates its
+      own 10-year CA and no external dependency is needed. Only set true if you already run the
+      Certificate Manager plugin and want certificates centrally managed.
+    required: false
+    type: boolean
+    default: false
+  - name: deploy_cluster
+    description: |
+      Deploy a Slurm cluster (controller, compute nodes, login nodes, REST API) using the operator.
+      Set false to install only the operator and manage Slurm clusters yourself via the Slinky CRDs.
+    required: false
+    type: boolean
+    default: true
+  - name: cluster_namespace
+    description: Namespace the Slurm cluster is deployed into. Use a distinct value per Slurm cluster.
+    required: true
+    type: string
+    default: slurm
+  - name: worker_replicas
+    description: Number of Slurm compute nodes (slurmd pods) to run. Can be scaled to zero.
+    required: true
+    type: int
+    default: 2
+  - name: worker_cpu
+    description: CPU request and limit per compute node, in Kubernetes quantity format (e.g. "2", "500m"). This is what Slurm sees as the node's CPU count.
+    required: true
+    type: string
+    default: "2"
+  - name: worker_memory
+    description: Memory request and limit per compute node, in Kubernetes quantity format (e.g. "4Gi"). This is what Slurm sees as the node's RealMemory.
+    required: true
+    type: string
+    default: 4Gi
+  - name: worker_gpus
+    description: |
+      NVIDIA GPUs to attach to each compute node. Set to 0 for a CPU-only cluster. Any value above 0
+      requires the NVIDIA GPU Operator plugin, and configures Slurm GRES (gpu) automatically.
+    required: false
+    type: int
+    default: 0
+  - name: storage_class
+    description: StorageClass for the controller's slurmctld state-save volume. Leave empty to use the cluster default StorageClass.
+    required: false
+    type: string
+    default: ""
+  - name: state_size
+    description: Size of the controller's slurmctld state-save volume.
+    required: true
+    type: string
+    default: 4Gi
+  - name: login_enabled
+    description: Deploy a login node (sackd + sshd + sssd) that users SSH into to submit jobs.
+    required: false
+    type: boolean
+    default: true
+  - name: login_service_type
+    description: |
+      Service type used to expose the login node's SSH port. ClusterIP is enough when users reach
+      Slurm through the Slurm Login workload - the login node only needs to be reachable from inside
+      the cluster. Use LoadBalancer (needs MetalLB or similar) or NodePort only if you also want to
+      SSH in from outside the cluster.
+    required: false
+    type: select
+    default: ClusterIP
+    options:
+      - ClusterIP
+      - LoadBalancer
+      - NodePort
+  - name: login_ssh_public_key
+    description: |
+      An SSH public key granted root access to the login node, e.g. the contents of your ~/.ssh/id_ed25519.pub.
+      Leave empty if you are configuring SSSD for user identity instead.
+    required: false
+    type: string
+    default: ""
+  - name: accounting_enabled
+    description: |
+      Deploy slurmdbd for job accounting (sacct, fairshare, QoS). A MariaDB database is deployed
+      alongside it automatically - no external database or extra plugin is required.
+    required: false
+    type: boolean
+    default: false
+  - name: accounting_db_password
+    description: |
+      Password for the "slurm" accounting database user. Required when accounting is enabled. Choose a
+      value and keep it - changing it after the database is initialised will not update the stored
+      credential and slurmdbd will fail to connect.
+    required: false
+    type: string
+    secret: true
+    default: ""
+  - name: accounting_db_size
+    description: Size of the accounting database volume. Only used when accounting is enabled.
+    required: false
+    type: string
+    default: 8Gi
+  - name: ldap_uri
+    description: |
+      LDAP server URI for login-node user identity, e.g. "ldap://simple-ldap.argocd.svc.cluster.local:389".
+      Leave empty to keep local-only accounts, in which case only login_ssh_public_key grants access.
+    required: false
+    type: string
+    default: ""
+  - name: ldap_search_base
+    description: LDAP search base DN, e.g. "dc=example,dc=org". Required when ldap_uri is set.
+    required: false
+    type: string
+    default: ""
+  - name: ldap_bind_dn
+    description: Bind DN used to query the directory, e.g. "cn=admin,dc=example,dc=org". Leave empty for anonymous bind.
+    required: false
+    type: string
+    default: ""
+  - name: ldap_bind_password
+    description: Password for ldap_bind_dn. Leave empty for anonymous bind.
+    required: false
+    type: string
+    secret: true
+    default: ""
