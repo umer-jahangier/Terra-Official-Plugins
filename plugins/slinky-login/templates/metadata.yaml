@@ -18,10 +18,9 @@ data:
       required: true
       default: "slurm"
     - name: loginService
-      description: "Name of the Slurm login node Service to connect to. For a Slinky release named <name> this is <name>-slurm-login-slinky."
+      description: "Name of the Slurm login node Service. This depends on the Slinky release name, so there is no safe default - find it with: kubectl get svc -n <slurmNamespace> | grep login. For a Slinky release named <name> it is <name>-slurm-login-slinky."
       type: string
       required: true
-      default: "slinky-slurm-login-slinky"
     - name: loginPort
       description: "SSH port on the login node Service"
       type: int

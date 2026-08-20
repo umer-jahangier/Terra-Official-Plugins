@@ -72,7 +72,7 @@ spec:
               enabled: true
               nodesets:
                 - ALL
-          {{- if and .Values.login_enabled .Values.sssd_secret }}
+          {{- if .Values.sssd_secret }}
           # User identity for the login node. Supplied as a Secret reference rather than
           # generated from fields, so the directory credentials never appear in this
           # Application's spec, and the administrator controls the TLS settings.
@@ -81,7 +81,9 @@ spec:
               name: {{ .Values.sssd_secret | quote }}
               key: sssd.conf
           {{- end }}
-          {{- if .Values.login_enabled }}
+          # The login node is always deployed - it is the submit host the Slurm
+          # Login workload connects to, and without it the cluster is only
+          # reachable via kubectl exec or slurmrestd.
           loginsets:
             slinky:
               enabled: true
@@ -91,7 +93,6 @@ spec:
               service:
                 spec:
                   type: {{ .Values.login_service_type }}
-          {{- end }}
   syncPolicy:
     automated:
       prune: true

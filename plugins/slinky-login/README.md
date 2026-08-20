@@ -60,7 +60,7 @@ and lands in its own pod. Nothing about a specific user is baked into the templa
 
 ## Prerequisites
 
-- **Slinky plugin** installed, with `login_enabled` set to `true`
+- **Slinky plugin** installed
 - **A directory for user identity** — set the Slinky plugin's `ldap_uri` / `ldap_search_base` fields, e.g. pointing at
   the Simple LDAP plugin. Without it the login node only knows local accounts and ordinary users cannot sign in
 - Network connectivity from the user's project namespace to the Slurm namespace on the login port (the bundled
@@ -91,7 +91,7 @@ No install-time configuration is required for this plugin.
 | Field | Details |
 |-------|---------|
 | `slurmNamespace` | **string** · Required · Default: `slurm`<br>Namespace the Slurm cluster runs in — must match the Slinky plugin's `cluster_namespace` |
-| `loginService` | **string** · Required · Default: `slinky-slurm-login-slinky`<br>Name of the login node Service. For a Slinky release named `<name>` this is `<name>-slurm-login-slinky` |
+| `loginService` | **string** · Required · *(no default)*<br>Name of the login node Service. It depends on the Slinky release name, so there is deliberately no default — look it up with `kubectl get svc -n <slurmNamespace> \| grep login`. For a Slinky release named `<name>` it is `<name>-slurm-login-slinky` |
 | `loginPort` | **int** · Required · Default: `22`<br>SSH port on the login node Service |
 | `registry` | **string** · Required · Default: `wettyoss`<br>Registry for the terminal image |
 | `repo` | **string** · Required · Default: `wetty`<br>Repository for the terminal image |
@@ -111,7 +111,7 @@ affecting the session belongs in that node's profile rather than in workload env
 
 ## Finding the Login Service Name
 
-The default assumes a Slinky release named `slinky` (Terra's default). To check:
+There is no default for `loginService`, because the name depends on the Slinky release name. Find yours with:
 
 ```sh
 kubectl get svc -n slurm -l app.kubernetes.io/part-of=slurm | grep login

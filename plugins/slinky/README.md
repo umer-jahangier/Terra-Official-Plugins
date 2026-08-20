@@ -109,9 +109,14 @@ dependencies at all.
 
 ### Install-Time Fields
 
-Only `chart_version` is genuinely required. Everything else has a working default, and the fields below the
-`deploy_cluster` line describe the Slurm cluster — they are ignored entirely when `deploy_cluster` is off, which is
-why none of them are marked required. (Terra has no conditional fields, so they stay visible on the form regardless.)
+Only `chart_version` and `login_service_type` are marked required — the latter because Terra requires a value for
+every `select` field, not because it usually needs changing. Everything else is optional. The fields below the
+`deploy_cluster` line describe the Slurm cluster and are ignored entirely when `deploy_cluster` is off; Terra has no
+conditional fields, so they stay visible on the form regardless.
+
+A login node is always deployed. It is the submit host the Slurm Login workload connects to, and without it the
+cluster is reachable only via `kubectl exec` or `slurmrestd`. It is `ClusterIP` by default, so it is not exposed
+outside the cluster.
 
 | Field | Details |
 |-------|---------|
@@ -125,9 +130,8 @@ why none of them are marked required. (Terra has no conditional fields, so they 
 | `worker_memory` | **string** · Optional · Default: `4Gi`<br>Memory request and limit per compute node. Becomes the node's `RealMemory` in Slurm. Ignored when `deploy_cluster` is off |
 | `worker_gpus` | **int** · Optional · Default: `0`<br>NVIDIA GPUs per compute node. Above `0` this also sets `GresTypes=gpu`, `Gres=gpu:<n>` and `gres.conf` `AutoDetect=nvidia` |
 | `storage_class` | **string** · Optional · Default: *(empty)*<br>StorageClass for the `slurmctld` state-save PVC. Empty uses the cluster default |
-| `login_enabled` | **boolean** · Optional · Default: `true`<br>Deploy a login node users SSH into to submit jobs |
-| `login_service_type` | **select** · Optional · Default: `ClusterIP`<br>How the login node's SSH port is exposed. `ClusterIP` suffices when users connect via the Slurm Login workload; use `LoadBalancer` or `NodePort` only for SSH from outside the cluster |
-| `login_ssh_public_key` | **string** · Optional · Default: *(empty)*<br>An SSH public key granted root access to the login node. Works even when SSSD is misconfigured |
+| `login_service_type` | **select** · Required · Default: `ClusterIP`<br>How the login node's SSH port is exposed. `ClusterIP` suffices when users connect via the Slurm Login workload; use `LoadBalancer` or `NodePort` only for SSH from outside the cluster. Terra requires a value for every `select`, so keep the default unless you need external SSH |
+| `login_ssh_public_key` | **string** · Optional · Default: *(empty)*<br>An SSH public key for root on the login node. Only usable for direct `ssh -i` from outside the cluster — the Slurm Login workload authenticates by password, so this grants no access through the browser terminal |
 | `accounting_enabled` | **boolean** · Optional · Default: `false`<br>Deploy `slurmdbd` plus a bundled MariaDB — see [Accounting](#accounting) |
 | `accounting_db_password` | **string** (secret) · Optional · Default: *(empty)*<br>Password for the `slurm` accounting database user. Required when accounting is enabled |
 | `sssd_secret` | **string** · Optional · Default: *(empty)*<br>Name of a Secret in `cluster_namespace` holding `sssd.conf`, giving the login node user identity — see [User Identity on the Login Node](#user-identity-on-the-login-node). Empty means local accounts only |

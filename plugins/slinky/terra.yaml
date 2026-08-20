@@ -80,18 +80,13 @@ fields:
     description: StorageClass for the controller's slurmctld state-save volume. Leave empty to use the cluster default StorageClass.
     required: false
     type: string
-  - name: login_enabled
-    description: Deploy a login node (sackd + sshd + sssd) that users SSH into to submit jobs.
-    required: false
-    type: boolean
-    default: true
   - name: login_service_type
     description: |
       Service type used to expose the login node's SSH port. ClusterIP is enough when users reach
       Slurm through the Slurm Login workload - the login node only needs to be reachable from inside
       the cluster. Use LoadBalancer (needs MetalLB or similar) or NodePort only if you also want to
       SSH in from outside the cluster.
-    required: false
+    required: true
     type: select
     default: ClusterIP
     options:
@@ -101,7 +96,8 @@ fields:
   - name: login_ssh_public_key
     description: |
       An SSH public key granted root access to the login node, e.g. the contents of your ~/.ssh/id_ed25519.pub.
-      Leave empty if you are configuring SSSD for user identity instead.
+      Only usable for direct "ssh -i" from outside the cluster - the Slurm Login workload authenticates with a
+      password, so this does not grant access through the browser terminal. Set sssd_secret for that.
     required: false
     type: string
   - name: accounting_enabled

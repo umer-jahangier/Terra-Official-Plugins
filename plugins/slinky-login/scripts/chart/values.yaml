@@ -23,7 +23,7 @@ _kuiper:
 
 # User-facing fields from templates/metadata.yaml
 slurmNamespace: slurm
-loginService: slurm-slurm-login-slinky
+loginService:   # supplied at launch; no safe default (depends on the Slinky release name)
 loginPort: 22
 registry: wettyoss
 repo: wetty

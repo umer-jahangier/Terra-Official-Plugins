@@ -18,8 +18,7 @@ worker_gpus: 0
 # Controller state-save persistence
 storage_class: ""
 
-# Login node (LoginSet)
-login_enabled: true
+# Login node (LoginSet) - always deployed; it is how users reach Slurm.
 login_service_type: ClusterIP
 login_ssh_public_key: ""
 
