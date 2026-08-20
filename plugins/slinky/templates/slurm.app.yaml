@@ -38,7 +38,8 @@ spec:
               {{- end }}
               resources:
                 requests:
-                  storage: {{ .Values.state_size | quote }}
+                  # slurmctld's state-save data is small; 4Gi is ample for any cluster size.
+                  storage: "4Gi"
             {{- if gt (int .Values.worker_gpus) 0 }}
             extraConfMap:
               GresTypes:

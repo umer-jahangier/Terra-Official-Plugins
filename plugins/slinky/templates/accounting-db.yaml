@@ -129,5 +129,6 @@ spec:
         {{- end }}
         resources:
           requests:
-            storage: {{ .Values.accounting_db_size | quote }}
+            # Slurm accounting records are compact; 8Gi holds years of job history.
+            storage: "8Gi"
 {{- end }}

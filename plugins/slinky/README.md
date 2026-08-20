@@ -88,10 +88,10 @@ cluster.
 - **NVIDIA GPU Operator plugin** if `worker_gpus` is greater than `0`
 - **MetalLB plugin** (or another load balancer controller) *only* if you change `login_service_type` to
   `LoadBalancer` — the default `ClusterIP` needs nothing
-- **Certificate Manager plugin** *only* if you set `cert_manager` to `true` — off by default
 
-Nothing else is required. The accounting database is deployed by this plugin, and the webhook certificate is
-self-signed in-cluster, so a default install has no external dependencies.
+Nothing else is required — in particular, **cert-manager is not needed**. The accounting database is deployed by this
+plugin and the operator's webhook certificate is self-signed in-cluster, so a default install has no external
+dependencies at all.
 
 ---
 
@@ -118,7 +118,6 @@ why none of them are marked required. (Terra has no conditional fields, so they 
 | `chart_version` | **select** · Required · Default: `1.2.1`<br>Version applied to all three Slinky charts |
 | `install_crds` | **boolean** · Optional · Default: `true`<br>Install the Slinky CRDs. Set `false` on any additional install so it does not contend with the first one over cluster-scoped CRDs |
 | `install_operator` | **boolean** · Optional · Default: `true`<br>Install the operator and webhook into the `slinky` namespace. The operator is a cluster singleton |
-| `cert_manager` | **boolean** · Optional · Default: `false`<br>Issue the webhook certificate via cert-manager instead of the chart's own self-signed CA. Off by default so the install stays self-contained |
 | `deploy_cluster` | **boolean** · Optional · Default: `true`<br>Deploy a Slurm cluster. `false` installs only the operator, leaving you to manage Slinky CRs yourself |
 | `cluster_namespace` | **string** · Optional · Default: `slurm`<br>Namespace for the Slurm cluster. Use a distinct value per cluster. Ignored when `deploy_cluster` is off |
 | `worker_replicas` | **int** · Optional · Default: `2`<br>Number of `slurmd` compute node pods. Supports scale-to-zero. Ignored when `deploy_cluster` is off |
@@ -126,13 +125,11 @@ why none of them are marked required. (Terra has no conditional fields, so they 
 | `worker_memory` | **string** · Optional · Default: `4Gi`<br>Memory request and limit per compute node. Becomes the node's `RealMemory` in Slurm. Ignored when `deploy_cluster` is off |
 | `worker_gpus` | **int** · Optional · Default: `0`<br>NVIDIA GPUs per compute node. Above `0` this also sets `GresTypes=gpu`, `Gres=gpu:<n>` and `gres.conf` `AutoDetect=nvidia` |
 | `storage_class` | **string** · Optional · Default: *(empty)*<br>StorageClass for the `slurmctld` state-save PVC. Empty uses the cluster default |
-| `state_size` | **string** · Optional · Default: `4Gi`<br>Size of the `slurmctld` state-save PVC. Ignored when `deploy_cluster` is off |
 | `login_enabled` | **boolean** · Optional · Default: `true`<br>Deploy a login node users SSH into to submit jobs |
 | `login_service_type` | **select** · Optional · Default: `ClusterIP`<br>How the login node's SSH port is exposed. `ClusterIP` suffices when users connect via the Slurm Login workload; use `LoadBalancer` or `NodePort` only for SSH from outside the cluster |
 | `login_ssh_public_key` | **string** · Optional · Default: *(empty)*<br>An SSH public key granted root access to the login node. Works even when SSSD is misconfigured |
 | `accounting_enabled` | **boolean** · Optional · Default: `false`<br>Deploy `slurmdbd` plus a bundled MariaDB — see [Accounting](#accounting) |
 | `accounting_db_password` | **string** (secret) · Optional · Default: *(empty)*<br>Password for the `slurm` accounting database user. Required when accounting is enabled |
-| `accounting_db_size` | **string** · Optional · Default: `8Gi`<br>Size of the accounting database volume |
 | `ldap_uri` | **string** · Optional · Default: *(empty)*<br>LDAP URI for login node user identity, e.g. `ldap://simple-ldap.argocd.svc.cluster.local:389`. Empty means local accounts only |
 | `ldap_search_base` | **string** · Optional · Default: *(empty)*<br>LDAP search base DN, e.g. `dc=example,dc=org`. Required when `ldap_uri` is set |
 | `ldap_bind_dn` | **string** · Optional · Default: *(empty)*<br>Bind DN for directory queries. Empty means anonymous bind |
@@ -220,7 +217,7 @@ database alongside it**. No external database, and no additional plugin, is requ
 
 A StorageClass on its own is not sufficient here: `slurmdbd` needs something speaking the MySQL wire protocol, not
 just a volume. The bundled database is a single-replica `StatefulSet` whose PVC uses the same `storage_class` field as
-the controller, sized by `accounting_db_size`.
+the controller, fixed at 8Gi — compact enough that Slurm accounting records take years to fill it.
 
 The names it uses are deliberately chosen to match the Slurm chart's default `accounting.storageConfig`, so the two
 sides wire themselves together with no further configuration:
@@ -267,9 +264,12 @@ against means Slurm job ownership, fairshare and accounting all attribute to the
 ## Notes
 
 - Slinky v1.2 requires Kubernetes v1.29+ and ships Slurm 26.05 container images
-- With `cert_manager` off (the default) the operator chart mints its own 10-year webhook CA. Because Helm regenerates
-  that keypair on every render, the plugin sets `ignoreDifferences` on the generated Secret and webhook `caBundle`
-  fields — without it ArgoCD would report permanent drift and restart the webhook on every refresh
+- The operator chart mints its own 10-year self-signed webhook CA. Because Helm regenerates that keypair on every
+  render, the plugin sets `ignoreDifferences` on the generated Secret and webhook `caBundle` fields — without it
+  ArgoCD would report permanent drift and restart the webhook on every refresh. If you would rather have cert-manager
+  issue it, set `certManager.enabled: true` in `templates/operator.app.yaml` and drop that `ignoreDifferences` block
+- `slurmctld` state-save is fixed at 4Gi and the accounting database at 8Gi — both are ample, and neither is exposed
+  as a field to keep the install form focused
 - The operator drains Slurm nodes before scale-in and rolling upgrades, so in-flight jobs survive `NodeSet` changes
 - `slurmctld` HA is achieved by Kubernetes restarting the controller pod, which is typically faster than a backup
   controller taking over — no shared filesystem is required

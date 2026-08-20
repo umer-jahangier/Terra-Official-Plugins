@@ -40,15 +40,6 @@ fields:
     required: false
     type: boolean
     default: true
-  - name: cert_manager
-    description: |
-      Issue the operator webhook's TLS certificate with cert-manager instead of the chart's own
-      self-signed CA. Leave false to keep the install self-contained - the chart then generates its
-      own 10-year CA and no external dependency is needed. Only set true if you already run the
-      Certificate Manager plugin and want certificates centrally managed.
-    required: false
-    type: boolean
-    default: false
   - name: deploy_cluster
     description: |
       Deploy a Slurm cluster (controller, compute nodes, login nodes, REST API) using the operator.
@@ -90,11 +81,6 @@ fields:
     required: false
     type: string
     default: ""
-  - name: state_size
-    description: Size of the controller's slurmctld state-save volume.
-    required: false
-    type: string
-    default: 4Gi
   - name: login_enabled
     description: Deploy a login node (sackd + sshd + sssd) that users SSH into to submit jobs.
     required: false
@@ -136,11 +122,6 @@ fields:
     type: string
     secret: true
     default: ""
-  - name: accounting_db_size
-    description: Size of the accounting database volume. Only used when accounting is enabled.
-    required: false
-    type: string
-    default: 8Gi
   - name: ldap_uri
     description: |
       LDAP server URI for login-node user identity, e.g. "ldap://simple-ldap.argocd.svc.cluster.local:389".

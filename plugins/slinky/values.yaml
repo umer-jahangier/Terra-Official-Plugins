@@ -4,8 +4,6 @@ chart_version: 1.2.1
 # Operator installation - both are cluster singletons.
 install_crds: true
 install_operator: true
-# false = the operator chart generates its own self-signed webhook CA (no external dependency).
-cert_manager: false
 
 # Slurm cluster
 deploy_cluster: true
@@ -19,7 +17,6 @@ worker_gpus: 0
 
 # Controller state-save persistence
 storage_class: ""
-state_size: 4Gi
 
 # Login node (LoginSet)
 login_enabled: true
@@ -29,7 +26,6 @@ login_ssh_public_key: ""
 # Accounting (slurmdbd + bundled MariaDB)
 accounting_enabled: false
 accounting_db_password: ""
-accounting_db_size: 8Gi
 
 # Login node user identity (SSSD -> LDAP)
 ldap_uri: ""

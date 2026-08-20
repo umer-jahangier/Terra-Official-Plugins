@@ -28,9 +28,10 @@ spec:
             # Managed by the separate slurm-operator-crds Application above.
             enabled: false
           certManager:
-            enabled: {{ .Values.cert_manager }}
-  {{- if not .Values.cert_manager }}
-  # Without cert-manager the chart mints the webhook CA itself with Helm's genCA/genSignedCert.
+            # The chart mints its own self-signed webhook CA, so this install has no
+            # external certificate dependency. See ignoreDifferences below.
+            enabled: false
+  # The chart mints the webhook CA itself with Helm's genCA/genSignedCert.
   # Those helpers have no `lookup` guard, so every ArgoCD render produces a fresh keypair. Left
   # alone that means permanent drift and a webhook pod restart on every refresh. Ignoring the
   # generated material pins the certificate created on first sync (it is valid for 10 years).
@@ -51,7 +52,6 @@ spec:
       name: slurm-operator-webhook
       jqPathExpressions:
         - .webhooks[].clientConfig.caBundle
-  {{- end }}
   syncPolicy:
     automated:
       prune: true
