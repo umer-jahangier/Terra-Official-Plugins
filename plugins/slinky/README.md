@@ -60,6 +60,12 @@ The three charts come from SchedMD's OCI registry at `ghcr.io/slinkyproject/char
 CRDs must be established before the operator, and both before any Slurm custom resource; the database must be up
 before `slurmdbd` tries to connect.
 
+**The `<release>-` prefix stops at the `Application`.** Inside `cluster_namespace` the plugin pins
+`fullnameOverride: slurm` on the Slurm chart, so the Kubernetes objects have fixed names no matter what the Terra
+release is called — `slurm-controller-0`, `slurm-login-slinky`, `slurm-worker-slinky`, `slurm-restapi`. That is what
+lets the Slurm Terminal workload find the login node without anyone looking a name up, and it is why the `kubectl`
+examples below have no release prefix in them.
+
 The plugin does **not** create `cluster_namespace` — you create it yourself before installing, since it must already
 exist to hold the required `sssd_secret`. That also means uninstalling the plugin never deletes your directory
 Secret, the accounting database, or the controller's state-save volume.
@@ -157,8 +163,9 @@ it from a Secret or environment variable. If the plugin collected the password a
 the ArgoCD `Application` spec in plaintext, readable by anyone with ArgoCD access. Passing the assembled file as a
 Secret keeps the credential out of every intermediate resource.
 
-> The Secret lives in a namespace this plugin owns. Uninstalling the plugin deletes that namespace and everything in
-> it, including this Secret and the controller's state-save volume.
+> The Secret lives in a namespace **you** create and own, not one this plugin creates. Uninstalling the plugin
+> removes the Slurm resources inside it but leaves the namespace, this Secret, the accounting database and the
+> controller's state-save volume in place — so a reinstall picks up where it left off.
 
 ### Securing a self-hosted or LAN directory
 
@@ -211,6 +218,10 @@ ldapsearch -x -LLL -H <ldap_uri> -D "<bind_dn>" -W \
 - **Kubernetes v1.29 or newer** (Slinky v1.2 compatibility matrix)
 - **A default StorageClass**, or a StorageClass named in `storage_class` — the controller persists `slurmctld`
   state-save data to a PVC, and the accounting database needs one too
+- **One schedulable node per compute node.** The operator gives `slurmd` pods a *required* anti-affinity on
+  `kubernetes.io/hostname`, so two compute nodes never share a Kubernetes node. With `worker_replicas` set higher
+  than your node count the surplus pods sit `Pending` indefinitely and `sinfo` shows the nodes as `down~`. On a
+  single-node cluster, set `worker_replicas` to `1`
 
 ### Conditional
 
@@ -250,10 +261,10 @@ connects to; it is `ClusterIP` by default, so nothing is exposed outside the clu
 | `install_crds` | **boolean** · Optional · Default: `true`<br>Install the Slinky CRDs. Set `false` on any additional install so it does not contend with the first one over cluster-scoped CRDs |
 | `install_operator` | **boolean** · Optional · Default: `true`<br>Install the operator and webhook into the `slinky` namespace. The operator is a cluster singleton |
 | `cluster_namespace` | **string** · Optional · Default: `slurm`<br>Namespace for the Slurm cluster. Use a distinct value per cluster — see [Multiple Slurm Clusters](#multiple-slurm-clusters) |
-| `worker_replicas` | **int** · Optional · Default: `2`<br>Number of `slurmd` compute node pods. Supports scale-to-zero |
+| `worker_replicas` | **int** · Optional · Default: `2`<br>Number of `slurmd` compute node pods. Supports scale-to-zero. Cannot exceed your schedulable node count — see [Also required](#also-required) |
 | `worker_cpu` | **string** · Optional · Default: `2`<br>CPU request and limit per compute node. Becomes the node's CPU count in Slurm |
 | `worker_memory` | **string** · Optional · Default: `4Gi`<br>Memory request and limit per compute node. Becomes the node's `RealMemory` in Slurm |
-| `worker_gpus` | **int** · Optional · Default: `0`<br>NVIDIA GPUs per compute node. Above `0` this also sets `GresTypes=gpu`, `Gres=gpu:<n>` and `gres.conf` `AutoDetect=nvidia` |
+| `worker_gpus` | **int** · Optional · Default: `0`<br>NVIDIA GPUs per compute node. Above `0` this also sets `GresTypes=gpu`, `Gres=gpu:<n>` and `gres.conf` `AutoDetect=nvidia`. It stays an integer rather than a toggle because Slurm needs the per-node count to build `Gres` — see [GPU compute nodes](#gpu-compute-nodes) |
 | `storage_class` | **string** · Optional · Default: *(empty)*<br>StorageClass for the `slurmctld` state-save PVC. Empty uses the cluster default |
 | `login_service_type` | **select** · Required · Default: `ClusterIP`<br>How the login node's SSH port is exposed. `ClusterIP` suffices when users connect via the Slurm Terminal workload; use `LoadBalancer` or `NodePort` only for SSH from outside the cluster. Terra requires a value for every `select`, so keep the default unless you need external SSH |
 | `login_ssh_public_key` | **string** · Optional · Default: *(empty)*<br>An SSH public key for root on the login node. Only usable for direct `ssh -i` from outside the cluster — the Slurm Terminal workload authenticates by password, so this grants no access through the browser terminal |
@@ -282,8 +293,8 @@ correctly. This is why `login_service_type` defaults to `ClusterIP`: nothing out
 Only if you set `login_service_type` to `LoadBalancer` (or `NodePort`) and provided `login_ssh_public_key`:
 
 ```sh
-SLURM_LOGIN_IP="$(kubectl get svc -n slurm <release>-slurm-login-slinky -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
-SLURM_LOGIN_PORT="$(kubectl get svc -n slurm <release>-slurm-login-slinky -o jsonpath='{.status.loadBalancer.ingress[0].ports[0].port}')"
+SLURM_LOGIN_IP="$(kubectl get svc -n slurm slurm-login-slinky -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+SLURM_LOGIN_PORT="$(kubectl get svc -n slurm slurm-login-slinky -o jsonpath='{.status.loadBalancer.ingress[0].ports[0].port}')"
 ssh -p "${SLURM_LOGIN_PORT:-22}" "root@${SLURM_LOGIN_IP}"
 ```
 
@@ -297,8 +308,8 @@ it needs only a JWT and `curl`, with no Slurm binaries anywhere.
 No SSH or load balancer required — useful for a quick smoke test:
 
 ```sh
-kubectl exec -n slurm <release>-slurm-controller-0 -- sinfo
-kubectl exec -n slurm <release>-slurm-controller-0 -- srun hostname
+kubectl exec -n slurm slurm-controller-0 -- sinfo
+kubectl exec -n slurm slurm-controller-0 -- srun hostname
 ```
 
 ### Standard Slurm commands
@@ -319,8 +330,47 @@ Edit `worker_replicas` in Terra, or scale the `NodeSet` directly. The operator d
 their pods, so running jobs are not lost:
 
 ```sh
-kubectl scale nodeset -n slurm <release>-slurm-worker-slinky --replicas=8
+kubectl scale nodeset -n slurm slurm-worker-slinky --replicas=8
 ```
+
+---
+
+## GPU compute nodes
+
+`worker_gpus` is the number of NVIDIA GPUs *per compute node*, and it is an integer rather than an on/off toggle on
+purpose: Slurm's GRES model needs the count. Setting it above `0` produces three things at once —
+`GresTypes=gpu` in `slurm.conf`, `Gres=gpu:<n>` on the NodeSet's node definition, and `AutoDetect=nvidia` in
+`gres.conf` — so Slurm knows both that GPUs exist and how many each node has. A boolean could not describe a node
+with four or eight of them, and a wrong count means Slurm over- or under-subscribes GPUs on every job that requests
+`--gres=gpu:N`. (Compare Helios, where a boolean is right because a single-user workstation only ever takes one.)
+
+Placement onto GPU hardware follows from the count. Each `slurmd` pod requests `nvidia.com/gpu: <n>`, and the
+Kubernetes scheduler will only place a pod on a node that advertises that extended resource — so with the NVIDIA GPU
+Operator installed, the pods land on GPU nodes without a `nodeSelector`.
+
+**Taints are the exception.** An extended-resource request does not grant a toleration. If your GPU nodes are
+Juno workstation nodes — tainted `juno-innovations.com/workstation: NoSchedule`, the taint Helios and the Slurm
+Terminal both tolerate — then `slurmd` pods have nothing to tolerate it with and will stay `Pending` no matter what
+`worker_gpus` is set to. Check with:
+
+```sh
+kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints
+```
+
+If they are tainted, add the toleration (and the NVIDIA runtime class, which Helios also sets) under
+`nodesets.slinky.podSpec` in `templates/slurm.app.yaml`:
+
+```yaml
+podSpec:
+  runtimeClassName: nvidia
+  tolerations:
+    - key: "juno-innovations.com/workstation"
+      operator: "Exists"
+      effect: "NoSchedule"
+```
+
+The same block is how you steer compute nodes at a particular Karpenter NodePool or machine class — `podSpec` accepts
+any `corev1.PodSpec` field, including `nodeSelector` and `priorityClassName`.
 
 ---
 
@@ -404,7 +454,44 @@ The failure mode is quiet: the bind succeeds, `id <user>` returns nothing, and S
 existing entry before wiring this up:
 
 ```sh
-kubectl exec -n slurm deploy/<release>-slurm-login-slinky -- getent passwd <user>
+kubectl exec -n slurm deploy/slurm-login-slinky -- getent passwd <user>
+```
+
+### Home directories are not created for you
+
+SSSD resolves users; it does not create their home directories, and the login image's PAM stack does not include
+`pam_mkhomedir` (the module ships in the image but nothing references it). So a user whose `homeDirectory` does not
+already exist logs in successfully and lands in `/`, where `cd ~` fails and `sbatch`'s default working directory is
+unwritable.
+
+Set `home_pvc` to a **ReadWriteMany** PVC — it is mounted at `/home` on the login node *and* on every compute node,
+which is also what makes a batch job's output readable afterwards — then create each user's directory once:
+
+```sh
+kubectl exec -n slurm deploy/slurm-login-slinky -- sh -c \
+  'install -d -m 700 -o <uidNumber> -g <gidNumber> /home/<user>'
+```
+
+If your directory already backs an existing NFS home export and you mount that as `home_pvc`, the directories are
+there already and nothing else is needed.
+
+Without `home_pvc`, `/home` is the login pod's ephemeral container filesystem: anything a user creates there is lost
+when the pod restarts, and compute nodes cannot see it at all.
+
+### Compute nodes do not get SSSD by default
+
+The Slurm chart only wires `sssd.conf` into `slurmd` pods when a NodeSet has `ssh.enabled` set — the login node gets
+it unconditionally, the compute nodes do not. Batch jobs still run, because `slurmctld` sends the resolved user name
+and group list along with the job, but anything that performs a lookup *on the compute node* degrades: `id` and
+`ls -l` print bare numbers, `ssh`-into-an-allocated-node and `pam_slurm_adopt` do not work, and ssh-based MPI
+launchers fail.
+
+If your users need any of that, enable SSH on the NodeSet so it receives the same `sssd.conf`, by adding this under
+`nodesets.slinky` in `templates/slurm.app.yaml`:
+
+```yaml
+ssh:
+  enabled: true
 ```
 
 ### Using the Simple LDAP plugin
@@ -436,8 +523,12 @@ associations (those are managed with `sacctmgr`).
   the kubelet's ConfigMap sync frequency (60s by default)
 - Compute node pods carry Slurm node state (Idle, Allocated, Mixed, Drain, Down …) as pod conditions, so
   `kubectl get pods` reflects what `sinfo` reports
-- Uninstalling the plugin does not remove the Slinky CRDs — they are deliberately left un-pruned so a second Slurm
-  cluster is never torn out from under a running job
+- **Uninstalling the release that installed the CRDs tears down every Slurm cluster in the Kubernetes cluster.** The
+  CRDs `Application` sets `prune: false`, which stops ArgoCD pruning them during a normal sync — but the
+  `resources-finalizer.argocd.argoproj.io` finalizer still cascade-deletes them when the `Application` itself is
+  removed, and deleting a CRD deletes every custom resource of that kind. Toggling `install_crds` off after install
+  has the same effect. If you run more than one Slurm cluster, treat the release that owns the CRDs as permanent, and
+  drain the others first if you ever do remove it
 - For deeper configuration (topology, Pyxis, prolog/epilog scripts, IMEX, SR-IOV, autoscaling), see the
   [Slinky documentation](https://slinky.schedmd.com/) and the
   [slurm-operator docs](https://github.com/SlinkyProject/slurm-operator/tree/main/docs)

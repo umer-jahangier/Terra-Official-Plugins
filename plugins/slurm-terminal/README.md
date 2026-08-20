@@ -45,7 +45,7 @@ them. The consequences:
 - **No `slurm.key` outside the `slurm` namespace.** That key is a cluster-wide credential — anyone holding it can
   impersonate any Slurm user. It never leaves the namespace it was created in.
 - **Users authenticate as themselves.** SSSD on the login node decides who they are, so job ownership, fairshare and
-  accounting all attribute correctly. Configure the directory with the Slinky plugin's `ldap_*` fields.
+  accounting all attribute correctly. Configure the directory with the Slinky plugin's `sssd_secret` field.
 - **No version coupling.** The terminal image does not have to track the Slurm release, because it contains no Slurm.
 - **Egress is locked down.** A NetworkPolicy permits exactly two things out of the pod: cluster DNS, and TCP to the
   login node. Nothing else.
@@ -53,16 +53,30 @@ them. The consequences:
 ### One template, many users
 
 This is a single template that serves everyone. Kuiper renders it per launch with the launching user's identity
-injected (`.Values.user`, `.Values.name`, `.Values.puid`, `.Values.guid`), so each session SSHes out as its own user
-and lands in its own pod. Nothing about a specific user is baked into the template.
+injected (`.Values.user` and `.Values.name`), so each session gets its own pod and defaults to SSHing out as the user
+who launched it. Nothing about a specific user is baked into the template.
+
+The uid/gid Kuiper also passes (`.Values.puid`, `.Values.guid`) go unused here, unlike in the Wetty and Helios
+templates: nothing runs as the user *inside* this pod, so there is no local account to create. The identity that
+matters is the one SSSD resolves on the login node at the far end of the SSH connection.
+
+`.Values.user` is the pre-filled username, not an enforcement boundary — wetty exposes a `/ssh/<username>` route, so
+a user can type a different account at the prompt. They still need that account's directory password, which is
+ordinary SSH behaviour; it just means job attribution rests on password secrecy rather than on this template.
 
 ---
 
 ## Prerequisites
 
 - **Slinky plugin** installed
-- **A directory for user identity** — set the Slinky plugin's `ldap_uri` / `ldap_search_base` fields, e.g. pointing at
-  the Simple LDAP plugin. Without it the login node only knows local accounts and ordinary users cannot sign in
+- **A directory for user identity** — create an `sssd.conf` Secret and name it in the Slinky plugin's `sssd_secret`
+  field, e.g. pointing at the Simple LDAP plugin. See
+  [the Slinky README](../slinky/README.md#required-the-directory-secret) for a paste-able example. Without it the
+  login node only knows local accounts and ordinary users cannot sign in
+- **A home directory for each user.** SSSD resolves users but does not create their home directories. Set the Slinky
+  plugin's `home_pvc` and create the directories once — see
+  [Home directories are not created for you](../slinky/README.md#home-directories-are-not-created-for-you). Skip this
+  and the terminal still opens, but the user lands in `/` and `cd ~` fails
 - Network connectivity from the user's project namespace to the Slurm namespace on the login port (the bundled
   NetworkPolicy allows this; a stricter cluster-wide policy could still block it)
 
@@ -133,10 +147,13 @@ Jobs run under your own Slurm identity, so `squeue --me` and fairshare behave as
 
 ## Notes
 
-- The session is not persistent — closing the browser drops the SSH connection. Run long work under `tmux` or
-  `screen` on the login node, or submit it with `sbatch` so it survives independently of the terminal
-- Home directories live on the login node. To share files between Slurm jobs and other Juno workloads, mount the same
-  storage into both the LoginSet and the NodeSets via the Slinky plugin
+- The session is not persistent — closing the browser drops the SSH connection and kills whatever was running in the
+  foreground, `srun` and `salloc` included. Submit long work with `sbatch` so it survives independently of the
+  terminal. Note that the Slinky login image ships neither `tmux` nor `screen`, so the usual "just run it in tmux"
+  answer needs one of them added to the login image first
+- Home directories come from the Slinky plugin's `home_pvc`, mounted at `/home` on the login node and on every
+  compute node. Without it `/home` is the login pod's ephemeral filesystem — invisible to jobs and lost on restart —
+  so set it before anyone relies on file output from `sbatch`
 - For scripted or automated submission, use `slurmrestd` — the Slinky plugin deploys it, and it is a genuine HTTP API
   needing only a JWT and `curl`, with no Slurm binaries and no terminal
 - The ingress is always authenticated via Hubble. There is deliberately no option to disable it: this terminal is a
