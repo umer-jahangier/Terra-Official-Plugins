@@ -343,7 +343,7 @@ pod onto a node advertising that resource, so no `nodeSelector` is needed.
 
 **Taints are the exception,** since an extended-resource request grants no toleration. If your GPU nodes are tainted
 (`kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints`), the pods stay `Pending` regardless of
-`worker_gpus`. Add what they need under `nodesets.slinky.podSpec` in `templates/slurm.app.yaml` — it accepts any
+`worker_gpus`. Add what they need under `nodesets.slinky.podSpec` in `templates/wave-2/slurm.app.yaml` — it accepts any
 `corev1.PodSpec` field, so the same block covers `nodeSelector` and `priorityClassName` for steering compute nodes at
 a particular node pool:
 
@@ -467,7 +467,7 @@ colleague's file shows a bare uid under `ls -l`.
 
 Check with `srun stat /etc/sssd/sssd.conf`. If your users need cross-user resolution — or `ssh` into an allocated
 node, `pam_slurm_adopt`, or an ssh-based MPI launcher — enable SSH on the NodeSet so it receives the same `sssd.conf`,
-by adding this under `nodesets.slinky` in `templates/slurm.app.yaml`:
+by adding this under `nodesets.slinky` in `templates/wave-2/slurm.app.yaml`:
 
 ```yaml
 ssh:
@@ -493,7 +493,7 @@ associations (those are managed with `sacctmgr`).
 - The operator chart mints its own 10-year self-signed webhook CA, and Helm regenerates that keypair on every render.
   The plugin pins the first one with `ignoreDifferences` plus the `RespectIgnoreDifferences=true` sync option — both
   are needed, since `ignoreDifferences` alone hides the drift without stopping the next sync from overwriting it. To
-  use cert-manager instead, set `certManager.enabled: true` in `templates/operator.app.yaml` and drop both
+  use cert-manager instead, set `certManager.enabled: true` in `templates/wave-1/operator.app.yaml` and drop both
 - `slurmctld` state-save is fixed at 4Gi and the accounting database at 8Gi — both are ample, and neither is exposed
   as a field to keep the install form focused
 - The operator drains Slurm nodes before scale-in and rolling upgrades, so in-flight jobs survive `NodeSet` changes
