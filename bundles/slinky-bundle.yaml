@@ -35,7 +35,6 @@ fields:
   - name: storage_class
     description: StorageClass for the controller's state-save volume and the accounting database. Leave empty to use the cluster's default StorageClass. If the cluster has no default, name one here (`kubectl get storageclass`) or the controller will not start.
     required: false
-    default: ""
     type: string
   - name: worker_replicas
     description: Number of Slurm compute nodes (slurmd pods) to run. Can be scaled to zero later.
@@ -65,13 +64,11 @@ fields:
   - name: accounting_db_password
     description: Password for the "slurm" accounting database user. Required when accounting is enabled. Choose it once — changing it later will not update the credential already stored in the database.
     required: false
-    default: ""
     type: string
     secret: true
   - name: sssd_secret
     description: Name of a Secret in the Slurm namespace holding an `sssd.conf` under key `sssd.conf`, giving the login node user identity. Create it before installing — see the Slinky plugin README for the file's structure. Leave empty for local accounts only.
     required: false
-    default: ""
     type: string
 plugins:
   # Release name "slinky" matters: it determines the Slurm login Service name

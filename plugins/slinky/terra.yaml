@@ -80,7 +80,6 @@ fields:
     description: StorageClass for the controller's slurmctld state-save volume. Leave empty to use the cluster default StorageClass.
     required: false
     type: string
-    default: ""
   - name: login_enabled
     description: Deploy a login node (sackd + sshd + sssd) that users SSH into to submit jobs.
     required: false
@@ -105,7 +104,6 @@ fields:
       Leave empty if you are configuring SSSD for user identity instead.
     required: false
     type: string
-    default: ""
   - name: accounting_enabled
     description: |
       Deploy slurmdbd for job accounting (sacct, fairshare, QoS). A MariaDB database is deployed
@@ -121,7 +119,6 @@ fields:
     required: false
     type: string
     secret: true
-    default: ""
   - name: sssd_secret
     description: |
       Name of a Secret in cluster_namespace holding an sssd.conf under the key "sssd.conf", used by the
@@ -130,4 +127,3 @@ fields:
       local-only accounts, in which case only login_ssh_public_key grants access.
     required: false
     type: string
-    default: ""
