@@ -27,6 +27,31 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       hostname: "{{ .Values.name }}"
+
+      # workstation nodes will require juno-innovations.com/workstation: "true"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: juno-innovations.com/workstation
+                    operator: In
+                    values:
+                      - "true"
+                  {{- if .Values.selector }}
+                  {{- range .Values.selector }}
+                  - key: {{ .key | quote }}
+                    operator: In
+                    values:
+                      - {{ .value | quote }}
+                  {{- end }}
+                  {{- end }}
+
+      # allow for this pod to work on nodes reserved for workstations
+      tolerations:
+        - key: "juno-innovations.com/workstation"
+          operator: "Exists"
+          effect: "NoSchedule"
       {{- if .Values.pullSecret }}
       imagePullSecrets:
         - name: "{{ .Values.pullSecret }}"
