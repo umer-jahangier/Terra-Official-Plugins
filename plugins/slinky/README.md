@@ -109,6 +109,10 @@ self-signed in-cluster, so a default install has no external dependencies.
 
 ### Install-Time Fields
 
+Only `chart_version` is genuinely required. Everything else has a working default, and the fields below the
+`deploy_cluster` line describe the Slurm cluster — they are ignored entirely when `deploy_cluster` is off, which is
+why none of them are marked required. (Terra has no conditional fields, so they stay visible on the form regardless.)
+
 | Field | Details |
 |-------|---------|
 | `chart_version` | **select** · Required · Default: `1.2.1`<br>Version applied to all three Slinky charts |
@@ -116,13 +120,13 @@ self-signed in-cluster, so a default install has no external dependencies.
 | `install_operator` | **boolean** · Optional · Default: `true`<br>Install the operator and webhook into the `slinky` namespace. The operator is a cluster singleton |
 | `cert_manager` | **boolean** · Optional · Default: `false`<br>Issue the webhook certificate via cert-manager instead of the chart's own self-signed CA. Off by default so the install stays self-contained |
 | `deploy_cluster` | **boolean** · Optional · Default: `true`<br>Deploy a Slurm cluster. `false` installs only the operator, leaving you to manage Slinky CRs yourself |
-| `cluster_namespace` | **string** · Required · Default: `slurm`<br>Namespace for the Slurm cluster. Use a distinct value per cluster |
-| `worker_replicas` | **int** · Required · Default: `2`<br>Number of `slurmd` compute node pods. Supports scale-to-zero |
-| `worker_cpu` | **string** · Required · Default: `2`<br>CPU request and limit per compute node. Becomes the node's CPU count in Slurm |
-| `worker_memory` | **string** · Required · Default: `4Gi`<br>Memory request and limit per compute node. Becomes the node's `RealMemory` in Slurm |
+| `cluster_namespace` | **string** · Optional · Default: `slurm`<br>Namespace for the Slurm cluster. Use a distinct value per cluster. Ignored when `deploy_cluster` is off |
+| `worker_replicas` | **int** · Optional · Default: `2`<br>Number of `slurmd` compute node pods. Supports scale-to-zero. Ignored when `deploy_cluster` is off |
+| `worker_cpu` | **string** · Optional · Default: `2`<br>CPU request and limit per compute node. Becomes the node's CPU count in Slurm. Ignored when `deploy_cluster` is off |
+| `worker_memory` | **string** · Optional · Default: `4Gi`<br>Memory request and limit per compute node. Becomes the node's `RealMemory` in Slurm. Ignored when `deploy_cluster` is off |
 | `worker_gpus` | **int** · Optional · Default: `0`<br>NVIDIA GPUs per compute node. Above `0` this also sets `GresTypes=gpu`, `Gres=gpu:<n>` and `gres.conf` `AutoDetect=nvidia` |
 | `storage_class` | **string** · Optional · Default: *(empty)*<br>StorageClass for the `slurmctld` state-save PVC. Empty uses the cluster default |
-| `state_size` | **string** · Required · Default: `4Gi`<br>Size of the `slurmctld` state-save PVC |
+| `state_size` | **string** · Optional · Default: `4Gi`<br>Size of the `slurmctld` state-save PVC. Ignored when `deploy_cluster` is off |
 | `login_enabled` | **boolean** · Optional · Default: `true`<br>Deploy a login node users SSH into to submit jobs |
 | `login_service_type` | **select** · Optional · Default: `ClusterIP`<br>How the login node's SSH port is exposed. `ClusterIP` suffices when users connect via the Slurm Login workload; use `LoadBalancer` or `NodePort` only for SSH from outside the cluster |
 | `login_ssh_public_key` | **string** · Optional · Default: *(empty)*<br>An SSH public key granted root access to the login node. Works even when SSSD is misconfigured |
