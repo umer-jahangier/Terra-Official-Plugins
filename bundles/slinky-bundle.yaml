@@ -15,8 +15,10 @@ description: |
   holds no Slurm credentials of its own — it connects over SSH to the login node deployed here, so
   the cluster auth key never leaves the Slurm namespace.
 
-  Accounting deploys its own MariaDB database, and the operator's webhook certificate is self-signed
-  in-cluster, so a default install has no external dependencies.
+  This bundle installs a working cluster. Two optional features are configured afterwards by editing
+  the installed Slinky plugin: job accounting (which deploys its own MariaDB database, and needs a
+  password set), and LDAP user identity for the login node (which needs a Secret created first — see
+  the Slinky plugin README). Until identity is configured, access is via the login node's SSH key.
 category: Bundle
 tags:
   - slurm
@@ -31,6 +33,10 @@ fields:
     description: Namespace the Slurm cluster is deployed into.
     required: true
     default: slurm
+    type: string
+  - name: storage_class
+    description: StorageClass for the Slurm controller's state-save volume. Find yours with `kubectl get storageclass`. The controller will not start without working storage.
+    required: true
     type: string
   - name: worker_replicas
     description: Number of Slurm compute nodes (slurmd pods) to run. Can be scaled to zero later.
@@ -49,30 +55,9 @@ fields:
     type: string
   - name: worker_gpus
     description: NVIDIA GPUs per compute node. Set to 0 for a CPU-only cluster. Above 0 requires the NVIDIA GPU Operator plugin.
-    required: false
+    required: true
     default: 0
     type: int
-  - name: storage_class
-    description: StorageClass for the controller state-save volume and the accounting database. Leave empty for the cluster default.
-    required: false
-    default: ""
-    type: string
-  - name: accounting_enabled
-    description: Deploy slurmdbd for job accounting (sacct, fairshare, QoS). A MariaDB database is deployed with it automatically.
-    required: false
-    default: false
-    type: boolean
-  - name: accounting_db_password
-    description: Password for the "slurm" accounting database user. Required when accounting is enabled. Choose it once — changing it later will not update the credential already stored in the database.
-    required: false
-    default: ""
-    type: string
-    secret: true
-  - name: sssd_secret
-    description: Name of a Secret in the Slurm namespace holding an `sssd.conf` under key `sssd.conf`, giving the login node user identity. Create it before installing — see the Slinky plugin README for the file's structure. Leave empty for local accounts only.
-    required: false
-    default: ""
-    type: string
 plugins:
   # Release name "slinky" matters: it determines the Slurm login Service name
   # ("slinky-slurm-login-slinky"), which is the default the Slurm Login workload
@@ -82,6 +67,8 @@ plugins:
     values:
       cluster_namespace:
         reference: cluster_namespace
+      storage_class:
+        reference: storage_class
       worker_replicas:
         reference: worker_replicas
       worker_cpu:
@@ -90,13 +77,5 @@ plugins:
         reference: worker_memory
       worker_gpus:
         reference: worker_gpus
-      storage_class:
-        reference: storage_class
-      accounting_enabled:
-        reference: accounting_enabled
-      accounting_db_password:
-        reference: accounting_db_password
-      sssd_secret:
-        reference: sssd_secret
   - plugin: Slurm Login
     name: slinky-login
