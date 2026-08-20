@@ -23,7 +23,7 @@ login_ssh_public_key: ""
 
 # Accounting (slurmdbd + bundled MariaDB)
 accounting_enabled: false
-accounting_db_password: ""
+accounting_db_secret: ""
 
 # Login node user identity - name of a Secret holding sssd.conf (see README). Required.
 sssd_secret: ""

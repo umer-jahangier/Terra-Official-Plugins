@@ -241,7 +241,7 @@ Three fields are required: `chart_version`, `sssd_secret` (the directory config 
 install — see [Prerequisites](#prerequisites)), and `login_service_type` (only because Terra requires a value for
 every `select`; the `ClusterIP` default is almost always right). Everything else has a working default.
 
-Every install deploys a Slurm cluster and a login node. The login node is the submit host the Slurm Login workload
+Every install deploys a Slurm cluster and a login node. The login node is the submit host the Slurm Terminal workload
 connects to; it is `ClusterIP` by default, so nothing is exposed outside the cluster.
 
 | Field | Details |
@@ -255,10 +255,10 @@ connects to; it is `ClusterIP` by default, so nothing is exposed outside the clu
 | `worker_memory` | **string** · Optional · Default: `4Gi`<br>Memory request and limit per compute node. Becomes the node's `RealMemory` in Slurm |
 | `worker_gpus` | **int** · Optional · Default: `0`<br>NVIDIA GPUs per compute node. Above `0` this also sets `GresTypes=gpu`, `Gres=gpu:<n>` and `gres.conf` `AutoDetect=nvidia` |
 | `storage_class` | **string** · Optional · Default: *(empty)*<br>StorageClass for the `slurmctld` state-save PVC. Empty uses the cluster default |
-| `login_service_type` | **select** · Required · Default: `ClusterIP`<br>How the login node's SSH port is exposed. `ClusterIP` suffices when users connect via the Slurm Login workload; use `LoadBalancer` or `NodePort` only for SSH from outside the cluster. Terra requires a value for every `select`, so keep the default unless you need external SSH |
-| `login_ssh_public_key` | **string** · Optional · Default: *(empty)*<br>An SSH public key for root on the login node. Only usable for direct `ssh -i` from outside the cluster — the Slurm Login workload authenticates by password, so this grants no access through the browser terminal |
+| `login_service_type` | **select** · Required · Default: `ClusterIP`<br>How the login node's SSH port is exposed. `ClusterIP` suffices when users connect via the Slurm Terminal workload; use `LoadBalancer` or `NodePort` only for SSH from outside the cluster. Terra requires a value for every `select`, so keep the default unless you need external SSH |
+| `login_ssh_public_key` | **string** · Optional · Default: *(empty)*<br>An SSH public key for root on the login node. Only usable for direct `ssh -i` from outside the cluster — the Slurm Terminal workload authenticates by password, so this grants no access through the browser terminal |
 | `accounting_enabled` | **boolean** · Optional · Default: `false`<br>Deploy `slurmdbd` plus a bundled MariaDB — see [Accounting](#accounting) |
-| `accounting_db_password` | **string** (secret) · Optional · Default: *(empty)*<br>Password for the `slurm` accounting database user. Required when accounting is enabled |
+| `accounting_db_secret` | **string** · Optional · *(no default)*<br>Secret in `cluster_namespace` holding the accounting DB password under key `password`. **Required when accounting is enabled** — create it first. Passed by reference, so the password never appears in an ArgoCD `Application` spec |
 | `ldap_ca_secret` | **string** · Optional · *(no default)*<br>Secret in `cluster_namespace` holding your LDAP CA under key `ca.crt`, mounted at `/etc/ssl/ldap-ca/ca.crt`. Use this for a private or self-signed certificate — with it, verification stays on (`reqcert = demand`) |
 | `sssd_secret` | **string** · **Required** · *(no default)*<br>Name of a Secret in `cluster_namespace` holding `sssd.conf`. **Create it before installing** — see [Prerequisites](#prerequisites). Without it no one can log in |
 
@@ -266,9 +266,9 @@ connects to; it is `ClusterIP` by default, so nothing is exposed outside the clu
 
 ## Using the Cluster
 
-### From the Slurm Login workload (how end users get in)
+### From the Slurm Terminal workload (how end users get in)
 
-Install the companion **[Slurm Login](../slinky-login/README.md)** plugin. It adds a workload template that users
+Install the companion **[Slurm Terminal](../slinky-login/README.md)** plugin. It adds a workload template that users
 launch from Hubble: a browser terminal that SSHes into this cluster's login node and drops them at a shell where
 `sbatch` and friends work.
 
@@ -356,12 +356,23 @@ sides wire themselves together with no further configuration:
 | Port | `3306` |
 | Database | `slurm_acct_db` |
 | User | `slurm` |
-| Password | Secret `mariadb-password`, key `password` |
+| Password | Secret named by `accounting_db_secret`, key `password` |
 
-Set `accounting_db_password` when enabling accounting; install fails fast with a clear message if it is left empty.
+Create the password Secret before enabling accounting:
 
-> **Choose the password once.** It is applied when the database initialises. Changing it later updates the Secret but
-> not the credential already stored inside MariaDB, and `slurmdbd` will then fail to connect.
+```sh
+kubectl create secret generic slurm-accounting-db -n slurm --from-literal=password='<choose one>'
+```
+
+Then set `accounting_enabled` and `accounting_db_secret`. The install fails fast with a clear message if the Secret
+name is missing. Both MariaDB and `slurmdbd` read the password from that Secret by reference, so it never passes
+through this chart or the ArgoCD `Application`.
+
+> **Choose the password once.** It is applied when the database initialises. Changing the Secret later will not
+> update the credential already stored inside MariaDB, and `slurmdbd` will then fail to connect.
+
+The database is further constrained: it runs as a non-root user with all capabilities dropped, has CPU and memory
+limits, no ServiceAccount token, and a NetworkPolicy that only permits connections from inside `cluster_namespace`.
 
 The database is intended for Slurm's accounting records only — the root account is randomised and unused, and the
 Service is reachable only from within the namespace.

@@ -26,7 +26,7 @@ spec:
         values: |
           # Pin resource names so they do not inherit the Terra release name.
           # The login Service is then always "slurm-login-slinky" in this
-          # namespace, which is what lets the Slurm Login workload find it
+          # namespace, which is what lets the Slurm Terminal workload find it
           # without anyone having to look the name up.
           fullnameOverride: slurm
           {{- if gt (int .Values.worker_gpus) 0 }}
@@ -51,6 +51,12 @@ spec:
             {{- end }}
           accounting:
             enabled: {{ .Values.accounting_enabled }}
+            {{- if .Values.accounting_enabled }}
+            storageConfig:
+              passwordKeyRef:
+                name: {{ .Values.accounting_db_secret | quote }}
+                key: password
+            {{- end }}
           nodesets:
             slinky:
               enabled: true

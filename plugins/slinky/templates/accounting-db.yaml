@@ -1,6 +1,6 @@
 {{- if .Values.accounting_enabled }}
-{{- if not .Values.accounting_db_password }}
-{{- fail "accounting_enabled is true but accounting_db_password is empty - set a password for the Slurm accounting database" }}
+{{- if not .Values.accounting_db_secret }}
+{{- fail "accounting_enabled is true but accounting_db_secret is empty - create a Secret holding the database password and name it here (see the plugin README)" }}
 {{- end }}
 ---
 # Accounting database for slurmdbd.
@@ -12,20 +12,9 @@
 #
 # The names below are not arbitrary: the upstream Slurm chart's default
 # accounting.storageConfig points at host "mariadb", database "slurm_acct_db",
-# user "slurm", and reads the password from secret "mariadb-password" key
-# "password". Matching them exactly means slurmdbd wires itself up with no
-# further configuration.
-apiVersion: v1
-kind: Secret
-metadata:
-  name: mariadb-password
-  namespace: {{ .Values.cluster_namespace }}
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
-type: Opaque
-stringData:
-  password: {{ .Values.accounting_db_password | quote }}
----
+# user "slurm". The password comes from a Secret the administrator creates and
+# names in accounting_db_secret, so it never passes through this chart or the
+# ArgoCD Application spec.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -84,10 +73,30 @@ spec:
         app.kubernetes.io/name: mariadb
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: mariadb
           image: docker.io/library/mariadb:11.4
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "2"
+              memory: "2Gi"
           ports:
             - containerPort: 3306
               name: mysql
@@ -102,7 +111,7 @@ spec:
             - name: MARIADB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: mariadb-password
+                  name: {{ .Values.accounting_db_secret | quote }}
                   key: password
           readinessProbe:
             exec:
@@ -136,4 +145,28 @@ spec:
           requests:
             # Slurm accounting records are compact; 8Gi holds years of job history.
             storage: "8Gi"
+---
+# Only Slurm components in this namespace may reach the accounting database.
+# Without this any pod in any namespace could open a connection to it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-mariadb
+  namespace: {{ .Values.cluster_namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: mariadb
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # Same namespace only - blocks every other tenant in the cluster.
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 3306
 {{- end }}

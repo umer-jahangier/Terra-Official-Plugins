@@ -1,6 +1,6 @@
-# Slurm Login
+# Slurm Terminal
 
-![Slurm Login](https://raw.githubusercontent.com/juno-fx/Terra-Official-Plugins/refs/heads/main/plugins/slinky-login/scripts/assets/logo.png)
+![Slurm Terminal](https://raw.githubusercontent.com/juno-fx/Terra-Official-Plugins/refs/heads/main/plugins/slinky-login/scripts/assets/logo.png)
 
 **Category:** Compute
 **Type:** Workload Template
@@ -73,7 +73,7 @@ and lands in its own pod. Nothing about a specific user is baked into the templa
 Administrators install the plugin once:
 
 1. Open **Terra** and navigate to the **Plugin Marketplace**
-2. Search for **"Slurm Login"**
+2. Search for **"Slurm Terminal"**
 3. Click **Install**
 
 The template then appears in **Genesis** for configuration, and users launch sessions from **Hubble**.
@@ -97,7 +97,6 @@ No install-time configuration is required for this plugin.
 | `nginx_registry` | **string** · Required · Default: `docker.io`<br>Registry for the nginx sidecar image |
 | `nginx_repo` | **string** · Required · Default: `nginx`<br>Repository for the nginx sidecar image |
 | `nginx_tag` | **string** · Required · Default: `1.29.3`<br>Tag for the nginx sidecar image |
-| `publicAccess` | **boolean** · Required · Default: `false`<br>Allow public access, disabling Hubble authentication on the ingress |
 | `ingressNamespace` | **string** · Required · Default: `ingress-nginx`<br>Namespace of the ingress controller, used by the NetworkPolicy |
 
 ### Custom Environment Variables
@@ -140,5 +139,7 @@ Jobs run under your own Slurm identity, so `squeue --me` and fairshare behave as
   storage into both the LoginSet and the NodeSets via the Slinky plugin
 - For scripted or automated submission, use `slurmrestd` — the Slinky plugin deploys it, and it is a genuine HTTP API
   needing only a JWT and `curl`, with no Slurm binaries and no terminal
-- `publicAccess` disables Hubble authentication on the ingress. The login node still demands valid credentials, but
-  the terminal becomes reachable by anyone who can reach the ingress — leave it `false` unless you have a reason
+- The ingress is always authenticated via Hubble. There is deliberately no option to disable it: this terminal is a
+  gateway to the Slurm cluster, so exposing it unauthenticated is never the right choice
+- The pod runs with no ServiceAccount token, `allowPrivilegeEscalation: false`, and all Linux capabilities dropped
+  (nginx keeps only `CHOWN`/`SETUID`/`SETGID`, which its image needs to start)

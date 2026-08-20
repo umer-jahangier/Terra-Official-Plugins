@@ -1,5 +1,5 @@
 resource_id: slinky-login
-name: Slurm Login
+name: Slurm Terminal
 icon: https://raw.githubusercontent.com/juno-fx/Terra-Official-Plugins/refs/heads/main/plugins/slinky-login/scripts/assets/logo.png
 description: |
   Browser terminal onto a Slinky Slurm cluster. Each user launches their own session from Hubble and

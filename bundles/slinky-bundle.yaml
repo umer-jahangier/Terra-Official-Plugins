@@ -10,7 +10,7 @@ description: |
   jobs and container workloads share the same hardware. Users interact with it exactly as they would
   on bare metal: sbatch, srun, squeue, sinfo, MPI, fairshare and preemption all work normally.
 
-  The Slurm Login workload template is installed alongside it. Users launch their own session from
+  The Slurm Terminal workload template is installed alongside it. Users launch their own session from
   Hubble and get a browser terminal on the Slurm login node, signed in as themselves. That terminal
   holds no Slurm credentials of its own — it connects over SSH to the login node deployed here, so
   the cluster auth key never leaves the Slurm namespace.
@@ -61,18 +61,17 @@ fields:
     required: false
     default: false
     type: boolean
-  - name: accounting_db_password
-    description: Password for the "slurm" accounting database user. Required when accounting is enabled. Choose it once — changing it later will not update the credential already stored in the database.
+  - name: accounting_db_secret
+    description: Name of a Secret in the Slurm namespace holding the accounting database password under key `password`. Required when accounting is enabled — create it first with `kubectl create secret generic slurm-accounting-db -n slurm --from-literal=password=...`. Passed by reference so the password never appears in an ArgoCD Application spec.
     required: false
     type: string
-    secret: true
   - name: sssd_secret
     description: "PREREQUISITE: name of a Secret in the Slurm namespace holding an `sssd.conf` under key `sssd.conf`. Create it before installing — see the Slinky plugin README for the file's structure and a worked LDAP example. Without it no one can log in to the cluster."
     required: true
     type: string
 plugins:
   # Release name "slinky" matters: it determines the Slurm login Service name
-  # ("slinky-slurm-login-slinky"), which is the default the Slurm Login workload
+  # ("slinky-slurm-login-slinky"), which is the default the Slurm Terminal workload
   # template connects to.
   - plugin: Slinky
     name: slinky
@@ -91,9 +90,9 @@ plugins:
         reference: worker_gpus
       accounting_enabled:
         reference: accounting_enabled
-      accounting_db_password:
-        reference: accounting_db_password
+      accounting_db_secret:
+        reference: accounting_db_secret
       sssd_secret:
         reference: sssd_secret
-  - plugin: Slurm Login
+  - plugin: Slurm Terminal
     name: slinky-login

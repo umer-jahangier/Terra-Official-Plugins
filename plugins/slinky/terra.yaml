@@ -74,7 +74,7 @@ fields:
   - name: login_service_type
     description: |
       Service type used to expose the login node's SSH port. ClusterIP is enough when users reach
-      Slurm through the Slurm Login workload - the login node only needs to be reachable from inside
+      Slurm through the Slurm Terminal workload - the login node only needs to be reachable from inside
       the cluster. Use LoadBalancer (needs MetalLB or similar) or NodePort only if you also want to
       SSH in from outside the cluster.
     required: true
@@ -87,7 +87,7 @@ fields:
   - name: login_ssh_public_key
     description: |
       An SSH public key granted root access to the login node, e.g. the contents of your ~/.ssh/id_ed25519.pub.
-      Only usable for direct "ssh -i" from outside the cluster - the Slurm Login workload authenticates with a
+      Only usable for direct "ssh -i" from outside the cluster - the Slurm Terminal workload authenticates with a
       password, so this does not grant access through the browser terminal. Set sssd_secret for that.
     required: false
     type: string
@@ -98,14 +98,17 @@ fields:
     required: false
     type: boolean
     default: false
-  - name: accounting_db_password
+  - name: accounting_db_secret
     description: |
-      Password for the "slurm" accounting database user. Required when accounting is enabled. Choose a
-      value and keep it - changing it after the database is initialised will not update the stored
-      credential and slurmdbd will fail to connect.
+      Name of a Secret in cluster_namespace holding the accounting database password under the key
+      "password". Required when accounting is enabled - create it before installing:
+
+        kubectl create secret generic slurm-accounting-db -n slurm --from-literal=password='<choose one>'
+
+      Passed by reference so the password never appears in an ArgoCD Application spec. Choose the value
+      once: changing it later will not update the credential already stored inside the database.
     required: false
     type: string
-    secret: true
   - name: sssd_secret
     description: |
       Name of a Secret in the "slurm" namespace holding an sssd.conf under the key "sssd.conf", used by the

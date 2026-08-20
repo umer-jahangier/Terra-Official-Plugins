@@ -21,6 +21,11 @@ spec:
         juno-innovations.com/workload: "Terminal"
 
     spec:
+      # This pod is a thin SSH client - it needs no Kubernetes API access at all.
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       hostname: "{{ .Values.name }}"
       {{- if .Values.pullSecret }}
       imagePullSecrets:
@@ -30,6 +35,13 @@ spec:
         - name: nginx
           image: "{{ .Values.nginx_registry }}/{{ .Values.nginx_repo }}:{{ .Values.nginx_tag }}"
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+              # The official nginx image starts as root, chowns its cache dirs and
+              # then drops to the nginx user. Without these three it cannot start.
+              add: ["CHOWN", "SETUID", "SETGID"]
           ports:
             - containerPort: 3001
               name: nginx
@@ -40,6 +52,10 @@ spec:
         - name: terminal
           image: "{{ .Values.registry }}/{{ .Values.repo }}:{{ .Values.tag }}"
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           command:
             - /bin/sh
           args:
