@@ -119,10 +119,23 @@ ldap_default_authtok = CHANGEME
 ldap_schema = rfc2307
 ldap_user_name = uid
 
-# Verify the directory's certificate. If your server only speaks plain ldap:// on
-# 389, use ldap_id_use_start_tls = true instead; failing that set reqcert to
-# "never", but note every user password then crosses the network in cleartext.
+# Verify the directory's certificate.
 ldap_tls_reqcert = demand
+
+# For a private or self-signed CA, set ldap_ca_secret on the plugin and use:
+#   ldap_tls_cacert = /etc/ssl/ldap-ca/ca.crt
+
+# --- If your directory only speaks plain ldap:// on 389 ---
+# Replace the two lines above with the three below. SSSD allows *lookups* over an
+# unencrypted connection but refuses to send *passwords*, so without the third
+# line `getent passwd <user>` succeeds while every login fails — and the error it
+# logs is the misleading "No available servers for service 'LDAP' / SSSD is
+# offline". Every user's password then crosses the network in cleartext, which is
+# what the option name is warning you about.
+#
+#   ldap_id_use_start_tls = false
+#   ldap_tls_reqcert = never
+#   ldap_auth_disable_tls_never_use_in_production = true
 
 cache_credentials = true
 enumerate = true
@@ -143,6 +156,42 @@ Secret keeps the credential out of every intermediate resource.
 
 > The Secret lives in a namespace this plugin owns. Uninstalling the plugin deletes that namespace and everything in
 > it, including this Secret and the controller's state-save volume.
+
+### Securing a self-hosted or LAN directory
+
+**A self-signed certificate is fully supported** — you do not need a publicly trusted CA. Set `ldap_ca_secret` and
+SSSD will verify the certificate properly:
+
+```sh
+# ca.crt is the CA that signed your LDAP server's certificate.
+# For a genuinely self-signed certificate, that is the server certificate itself.
+kubectl create secret generic ldap-ca -n slurm --from-file=ca.crt=./ca.crt
+```
+
+Set `ldap_ca_secret` to `ldap-ca`, and use this in your `sssd.conf`:
+
+```ini
+ldap_uri = ldaps://directory.example.internal:636
+ldap_tls_reqcert = demand
+ldap_tls_cacert = /etc/ssl/ldap-ca/ca.crt
+```
+
+That is a fully verified TLS connection. There is no reason to weaken it for a private CA.
+
+#### If the directory has no TLS at all
+
+Then the only way SSSD will authenticate is with `ldap_auth_disable_tls_never_use_in_production = true`, which sends
+every user's password across the network in cleartext. Nothing in this plugin can make that safe — the fix is on the
+directory itself:
+
+1. Enable TLS on the LDAP server (`ldaps://` on 636, or StartTLS on 389). A self-signed certificate is fine; see
+   above.
+2. Store password **hashes** (`{SSHA}`), never plaintext. If `userPassword` is readable as the password itself, then
+   read access to the directory exposes every account regardless of transport security.
+
+**Symptom cheat-sheet.** `getent passwd <user>` works but login fails → SSSD is refusing unencrypted auth (see above).
+`getent` returns nothing → missing POSIX attributes (see below). `id: cannot find name for group ID N` after login →
+harmless; add a matching `posixGroup` to the directory if you want the name resolved.
 
 **Your directory entries need POSIX attributes** — `objectClass: posixAccount` with `uidNumber`, `gidNumber` and
 ideally `homeDirectory`. Without them the bind succeeds but users do not resolve and SSH rejects the login. The
@@ -207,6 +256,7 @@ connects to; it is `ClusterIP` by default, so nothing is exposed outside the clu
 | `login_ssh_public_key` | **string** · Optional · Default: *(empty)*<br>An SSH public key for root on the login node. Only usable for direct `ssh -i` from outside the cluster — the Slurm Login workload authenticates by password, so this grants no access through the browser terminal |
 | `accounting_enabled` | **boolean** · Optional · Default: `false`<br>Deploy `slurmdbd` plus a bundled MariaDB — see [Accounting](#accounting) |
 | `accounting_db_password` | **string** (secret) · Optional · Default: *(empty)*<br>Password for the `slurm` accounting database user. Required when accounting is enabled |
+| `ldap_ca_secret` | **string** · Optional · *(no default)*<br>Secret in `cluster_namespace` holding your LDAP CA under key `ca.crt`, mounted at `/etc/ssl/ldap-ca/ca.crt`. Use this for a private or self-signed certificate — with it, verification stays on (`reqcert = demand`) |
 | `sssd_secret` | **string** · **Required** · *(no default)*<br>Name of a Secret in `cluster_namespace` holding `sssd.conf`. **Create it before installing** — see [Prerequisites](#prerequisites). Without it no one can log in |
 
 ---

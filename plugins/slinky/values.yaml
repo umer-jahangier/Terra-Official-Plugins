@@ -27,3 +27,6 @@ accounting_db_password: ""
 
 # Login node user identity - name of a Secret holding sssd.conf (see README). Required.
 sssd_secret: ""
+
+# Optional CA bundle for an LDAP server with a private/self-signed certificate.
+ldap_ca_secret: ""

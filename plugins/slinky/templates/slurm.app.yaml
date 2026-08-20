@@ -91,6 +91,21 @@ spec:
           loginsets:
             slinky:
               enabled: true
+              {{- if .Values.ldap_ca_secret }}
+              # Trust a private/self-signed LDAP CA, so sssd.conf can use
+              # ldaps:// with ldap_tls_reqcert = demand instead of disabling
+              # certificate verification.
+              login:
+                volumeMounts:
+                  - name: ldap-ca
+                    mountPath: /etc/ssl/ldap-ca
+                    readOnly: true
+              podSpec:
+                volumes:
+                  - name: ldap-ca
+                    secret:
+                      secretName: {{ .Values.ldap_ca_secret | quote }}
+              {{- end }}
               {{- if .Values.login_ssh_public_key }}
               rootSshAuthorizedKeys: {{ .Values.login_ssh_public_key | quote }}
               {{- end }}

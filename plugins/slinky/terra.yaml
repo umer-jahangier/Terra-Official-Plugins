@@ -116,3 +116,17 @@ fields:
       only local accounts and no one can log in.
     required: true
     type: string
+  - name: ldap_ca_secret
+    description: |
+      Optional. Name of a Secret in cluster_namespace holding the CA certificate that signed your LDAP
+      server's TLS certificate, under the key "ca.crt". Mounted into the login node at
+      /etc/ssl/ldap-ca/ca.crt, so your sssd.conf can set:
+
+        ldap_uri = ldaps://your-directory:636
+        ldap_tls_reqcert = demand
+        ldap_tls_cacert = /etc/ssl/ldap-ca/ca.crt
+
+      Only needed for a private or self-signed CA. Leave empty if your directory's certificate is signed
+      by a publicly trusted CA - the login image already trusts those.
+    required: false
+    type: string
