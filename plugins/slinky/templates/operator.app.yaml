@@ -31,10 +31,10 @@ spec:
             # The chart mints its own self-signed webhook CA, so this install has no
             # external certificate dependency. See ignoreDifferences below.
             enabled: false
-  # The chart mints the webhook CA itself with Helm's genCA/genSignedCert.
-  # Those helpers have no `lookup` guard, so every ArgoCD render produces a fresh keypair. Left
-  # alone that means permanent drift and a webhook pod restart on every refresh. Ignoring the
-  # generated material pins the certificate created on first sync (it is valid for 10 years).
+  # The chart mints the webhook CA with genCA/genSignedCert, which have no `lookup` guard, so
+  # every render produces a fresh keypair. These two pin the certificate created on first sync
+  # (valid 10 years). Both are needed: ignoreDifferences stops ArgoCD reporting the drift,
+  # RespectIgnoreDifferences=true below stops it applying a new keypair on the next sync.
   ignoreDifferences:
     - group: ""
       kind: Secret
@@ -60,4 +60,6 @@ spec:
     syncOptions:
       - ServerSideApply=true
       - CreateNamespace=true
+      # Applies ignoreDifferences at sync time, not just diff time. See above.
+      - RespectIgnoreDifferences=true
 {{- end }}

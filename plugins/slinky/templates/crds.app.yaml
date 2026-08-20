@@ -8,8 +8,9 @@ metadata:
   annotations:
     # Wave 0 - the Slinky CRDs must exist before the operator or any Slurm CR.
     argocd.argoproj.io/sync-wave: "0"
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
+  # No resources-finalizer here, unlike the other two Applications - that finalizer
+  # cascade-deletes on Application delete, and deleting a CRD takes every Slurm
+  # cluster in the cluster with it. Do not add it back for consistency.
 spec:
   project: default
   destination:

@@ -60,11 +60,10 @@ The three charts come from SchedMD's OCI registry at `ghcr.io/slinkyproject/char
 CRDs must be established before the operator, and both before any Slurm custom resource; the database must be up
 before `slurmdbd` tries to connect.
 
-**The `<release>-` prefix stops at the `Application`.** Inside `cluster_namespace` the plugin pins
-`fullnameOverride: slurm` on the Slurm chart, so the Kubernetes objects have fixed names no matter what the Terra
-release is called — `slurm-controller-0`, `slurm-login-slinky`, `slurm-worker-slinky`, `slurm-restapi`. That is what
-lets the Slurm Terminal workload find the login node without anyone looking a name up, and it is why the `kubectl`
-examples below have no release prefix in them.
+**The `<release>-` prefix stops at the `Application`.** The plugin pins `fullnameOverride: slurm`, so the objects
+inside `cluster_namespace` have fixed names whatever the release is called — `slurm-controller-0`,
+`slurm-login-slinky`, `slurm-worker-slinky`, `slurm-restapi`. That is why the `kubectl` examples below carry no
+release prefix.
 
 The plugin does **not** create `cluster_namespace` — you create it yourself before installing, since it must already
 exist to hold the required `sssd_secret`. That also means uninstalling the plugin never deletes your directory
@@ -218,10 +217,8 @@ ldapsearch -x -LLL -H <ldap_uri> -D "<bind_dn>" -W \
 - **Kubernetes v1.29 or newer** (Slinky v1.2 compatibility matrix)
 - **A default StorageClass**, or a StorageClass named in `storage_class` — the controller persists `slurmctld`
   state-save data to a PVC, and the accounting database needs one too
-- **One schedulable node per compute node.** The operator gives `slurmd` pods a *required* anti-affinity on
-  `kubernetes.io/hostname`, so two compute nodes never share a Kubernetes node. With `worker_replicas` set higher
-  than your node count the surplus pods sit `Pending` indefinitely and `sinfo` shows the nodes as `down~`. On a
-  single-node cluster, set `worker_replicas` to `1`
+- **One schedulable node per compute node** — `slurmd` pods have a required anti-affinity on `kubernetes.io/hostname`,
+  so `worker_replicas` above your node count leaves the surplus pods `Pending`. On a single-node cluster, use `1`
 
 ### Conditional
 
@@ -337,28 +334,18 @@ kubectl scale nodeset -n slurm slurm-worker-slinky --replicas=8
 
 ## GPU compute nodes
 
-`worker_gpus` is the number of NVIDIA GPUs *per compute node*, and it is an integer rather than an on/off toggle on
-purpose: Slurm's GRES model needs the count. Setting it above `0` produces three things at once —
-`GresTypes=gpu` in `slurm.conf`, `Gres=gpu:<n>` on the NodeSet's node definition, and `AutoDetect=nvidia` in
-`gres.conf` — so Slurm knows both that GPUs exist and how many each node has. A boolean could not describe a node
-with four or eight of them, and a wrong count means Slurm over- or under-subscribes GPUs on every job that requests
-`--gres=gpu:N`. (Compare Helios, where a boolean is right because a single-user workstation only ever takes one.)
+`worker_gpus` is GPUs *per compute node*, and it is a count rather than a toggle because Slurm's GRES model needs the
+number: above `0` it sets `GresTypes=gpu`, `Gres=gpu:<n>` and `gres.conf` `AutoDetect=nvidia`. Get the count wrong and
+Slurm over- or under-subscribes GPUs on every `--gres=gpu:N` job.
 
-Placement onto GPU hardware follows from the count. Each `slurmd` pod requests `nvidia.com/gpu: <n>`, and the
-Kubernetes scheduler will only place a pod on a node that advertises that extended resource — so with the NVIDIA GPU
-Operator installed, the pods land on GPU nodes without a `nodeSelector`.
+Placement follows from the count — each `slurmd` pod requests `nvidia.com/gpu: <n>`, and Kubernetes only schedules a
+pod onto a node advertising that resource, so no `nodeSelector` is needed.
 
-**Taints are the exception.** An extended-resource request does not grant a toleration. If your GPU nodes are
-Juno workstation nodes — tainted `juno-innovations.com/workstation: NoSchedule`, the taint Helios and the Slurm
-Terminal both tolerate — then `slurmd` pods have nothing to tolerate it with and will stay `Pending` no matter what
-`worker_gpus` is set to. Check with:
-
-```sh
-kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints
-```
-
-If they are tainted, add the toleration (and the NVIDIA runtime class, which Helios also sets) under
-`nodesets.slinky.podSpec` in `templates/slurm.app.yaml`:
+**Taints are the exception,** since an extended-resource request grants no toleration. If your GPU nodes are tainted
+(`kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints`), the pods stay `Pending` regardless of
+`worker_gpus`. Add what they need under `nodesets.slinky.podSpec` in `templates/slurm.app.yaml` — it accepts any
+`corev1.PodSpec` field, so the same block covers `nodeSelector` and `priorityClassName` for steering compute nodes at
+a particular node pool:
 
 ```yaml
 podSpec:
@@ -368,9 +355,6 @@ podSpec:
       operator: "Exists"
       effect: "NoSchedule"
 ```
-
-The same block is how you steer compute nodes at a particular Karpenter NodePool or machine class — `podSpec` accepts
-any `corev1.PodSpec` field, including `nodeSelector` and `priorityClassName`.
 
 ---
 
@@ -457,37 +441,33 @@ existing entry before wiring this up:
 kubectl exec -n slurm deploy/slurm-login-slinky -- getent passwd <user>
 ```
 
-### Home directories are not created for you
+### Home directories
 
-SSSD resolves users; it does not create their home directories, and the login image's PAM stack does not include
-`pam_mkhomedir` (the module ships in the image but nothing references it). So a user whose `homeDirectory` does not
-already exist logs in successfully and lands in `/`, where `cd ~` fails and `sbatch`'s default working directory is
-unwritable.
+SSSD resolves users; it does not create their home directories. Point `home_pvc` at the **ReadWriteMany** PVC backing
+your existing home export and the directories are already there. It is mounted at `/home` on the login node *and* on
+every compute node, which is also what makes a batch job's output readable afterwards.
 
-Set `home_pvc` to a **ReadWriteMany** PVC — it is mounted at `/home` on the login node *and* on every compute node,
-which is also what makes a batch job's output readable afterwards — then create each user's directory once:
+Without `home_pvc`, `/home` is the login pod's ephemeral filesystem — lost on restart, invisible to jobs.
+
+If a directory is missing, the user logs in fine but lands in `/` with `cd ~` failing and `sbatch` unable to write its
+output file. That happens for users added after the export was provisioned, since nothing here runs `pam_mkhomedir`.
+Create one by hand with:
 
 ```sh
 kubectl exec -n slurm deploy/slurm-login-slinky -- sh -c \
   'install -d -m 700 -o <uidNumber> -g <gidNumber> /home/<user>'
 ```
 
-If your directory already backs an existing NFS home export and you mount that as `home_pvc`, the directories are
-there already and nothing else is needed.
-
-Without `home_pvc`, `/home` is the login pod's ephemeral container filesystem: anything a user creates there is lost
-when the pod restarts, and compute nodes cannot see it at all.
-
 ### Compute nodes do not get SSSD by default
 
-The Slurm chart only wires `sssd.conf` into `slurmd` pods when a NodeSet has `ssh.enabled` set — the login node gets
-it unconditionally, the compute nodes do not. Batch jobs still run, because `slurmctld` sends the resolved user name
-and group list along with the job, but anything that performs a lookup *on the compute node* degrades: `id` and
-`ls -l` print bare numbers, `ssh`-into-an-allocated-node and `pam_slurm_adopt` do not work, and ssh-based MPI
-launchers fail.
+The Slurm chart only wires `sssd.conf` into `slurmd` pods when a NodeSet sets `ssh.enabled`. This matters less than it
+sounds: the `slurmd` image ships `nss_slurm`, which serves the job's *own* user out of the Slurm job step, so `id`
+inside a job resolves your name with no directory on the node at all. What you lose is lookups for anyone else — a
+colleague's file shows a bare uid under `ls -l`.
 
-If your users need any of that, enable SSH on the NodeSet so it receives the same `sssd.conf`, by adding this under
-`nodesets.slinky` in `templates/slurm.app.yaml`:
+Check with `srun stat /etc/sssd/sssd.conf`. If your users need cross-user resolution — or `ssh` into an allocated
+node, `pam_slurm_adopt`, or an ssh-based MPI launcher — enable SSH on the NodeSet so it receives the same `sssd.conf`,
+by adding this under `nodesets.slinky` in `templates/slurm.app.yaml`:
 
 ```yaml
 ssh:
@@ -510,10 +490,10 @@ associations (those are managed with `sacctmgr`).
 ## Notes
 
 - Slinky v1.2 requires Kubernetes v1.29+ and ships Slurm 26.05 container images
-- The operator chart mints its own 10-year self-signed webhook CA. Because Helm regenerates that keypair on every
-  render, the plugin sets `ignoreDifferences` on the generated Secret and webhook `caBundle` fields — without it
-  ArgoCD would report permanent drift and restart the webhook on every refresh. If you would rather have cert-manager
-  issue it, set `certManager.enabled: true` in `templates/operator.app.yaml` and drop that `ignoreDifferences` block
+- The operator chart mints its own 10-year self-signed webhook CA, and Helm regenerates that keypair on every render.
+  The plugin pins the first one with `ignoreDifferences` plus the `RespectIgnoreDifferences=true` sync option — both
+  are needed, since `ignoreDifferences` alone hides the drift without stopping the next sync from overwriting it. To
+  use cert-manager instead, set `certManager.enabled: true` in `templates/operator.app.yaml` and drop both
 - `slurmctld` state-save is fixed at 4Gi and the accounting database at 8Gi — both are ample, and neither is exposed
   as a field to keep the install form focused
 - The operator drains Slurm nodes before scale-in and rolling upgrades, so in-flight jobs survive `NodeSet` changes
@@ -523,12 +503,10 @@ associations (those are managed with `sacctmgr`).
   the kubelet's ConfigMap sync frequency (60s by default)
 - Compute node pods carry Slurm node state (Idle, Allocated, Mixed, Drain, Down …) as pod conditions, so
   `kubectl get pods` reflects what `sinfo` reports
-- **Uninstalling the release that installed the CRDs tears down every Slurm cluster in the Kubernetes cluster.** The
-  CRDs `Application` sets `prune: false`, which stops ArgoCD pruning them during a normal sync — but the
-  `resources-finalizer.argocd.argoproj.io` finalizer still cascade-deletes them when the `Application` itself is
-  removed, and deleting a CRD deletes every custom resource of that kind. Toggling `install_crds` off after install
-  has the same effect. If you run more than one Slurm cluster, treat the release that owns the CRDs as permanent, and
-  drain the others first if you ever do remove it
+- Uninstalling the plugin leaves the Slinky CRDs in place, so a second Slurm cluster is never torn out from under a
+  running job. This needs both `prune: false` *and* the absence of a `resources-finalizer` on that `Application` —
+  deleting a CRD would garbage-collect every Slurm CR in the cluster. Remove them by hand if you are decommissioning
+  Slinky entirely
 - For deeper configuration (topology, Pyxis, prolog/epilog scripts, IMEX, SR-IOV, autoscaling), see the
   [Slinky documentation](https://slinky.schedmd.com/) and the
   [slurm-operator docs](https://github.com/SlinkyProject/slurm-operator/tree/main/docs)
