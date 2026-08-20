@@ -27,8 +27,5 @@ login_ssh_public_key: ""
 accounting_enabled: false
 accounting_db_password: ""
 
-# Login node user identity (SSSD -> LDAP)
-ldap_uri: ""
-ldap_search_base: ""
-ldap_bind_dn: ""
-ldap_bind_password: ""
+# Login node user identity - name of a Secret holding sssd.conf (see README).
+sssd_secret: ""

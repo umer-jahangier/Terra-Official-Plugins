@@ -122,26 +122,12 @@ fields:
     type: string
     secret: true
     default: ""
-  - name: ldap_uri
+  - name: sssd_secret
     description: |
-      LDAP server URI for login-node user identity, e.g. "ldap://simple-ldap.argocd.svc.cluster.local:389".
-      Leave empty to keep local-only accounts, in which case only login_ssh_public_key grants access.
+      Name of a Secret in cluster_namespace holding an sssd.conf under the key "sssd.conf", used by the
+      login node to resolve and authenticate users against your directory. Create it before installing -
+      see this plugin's README for the file's structure and a worked LDAP example. Leave empty to keep
+      local-only accounts, in which case only login_ssh_public_key grants access.
     required: false
     type: string
-    default: ""
-  - name: ldap_search_base
-    description: LDAP search base DN, e.g. "dc=example,dc=org". Required when ldap_uri is set.
-    required: false
-    type: string
-    default: ""
-  - name: ldap_bind_dn
-    description: Bind DN used to query the directory, e.g. "cn=admin,dc=example,dc=org". Leave empty for anonymous bind.
-    required: false
-    type: string
-    default: ""
-  - name: ldap_bind_password
-    description: Password for ldap_bind_dn. Leave empty for anonymous bind.
-    required: false
-    type: string
-    secret: true
     default: ""

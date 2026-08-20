@@ -130,10 +130,7 @@ why none of them are marked required. (Terra has no conditional fields, so they 
 | `login_ssh_public_key` | **string** · Optional · Default: *(empty)*<br>An SSH public key granted root access to the login node. Works even when SSSD is misconfigured |
 | `accounting_enabled` | **boolean** · Optional · Default: `false`<br>Deploy `slurmdbd` plus a bundled MariaDB — see [Accounting](#accounting) |
 | `accounting_db_password` | **string** (secret) · Optional · Default: *(empty)*<br>Password for the `slurm` accounting database user. Required when accounting is enabled |
-| `ldap_uri` | **string** · Optional · Default: *(empty)*<br>LDAP URI for login node user identity, e.g. `ldap://simple-ldap.argocd.svc.cluster.local:389`. Empty means local accounts only |
-| `ldap_search_base` | **string** · Optional · Default: *(empty)*<br>LDAP search base DN, e.g. `dc=example,dc=org`. Required when `ldap_uri` is set |
-| `ldap_bind_dn` | **string** · Optional · Default: *(empty)*<br>Bind DN for directory queries. Empty means anonymous bind |
-| `ldap_bind_password` | **string** (secret) · Optional · Default: *(empty)*<br>Password for `ldap_bind_dn` |
+| `sssd_secret` | **string** · Optional · Default: *(empty)*<br>Name of a Secret in `cluster_namespace` holding `sssd.conf`, giving the login node user identity — see [User Identity on the Login Node](#user-identity-on-the-login-node). Empty means local accounts only |
 
 ---
 
@@ -243,21 +240,90 @@ Service is reachable only from within the namespace.
 ## User Identity on the Login Node
 
 By default the login node knows only local accounts, so `login_ssh_public_key` is the only way in. To let ordinary
-users sign in, point SSSD at a directory with the `ldap_*` fields:
+users sign in, supply an `sssd.conf` as a **Secret** and name it in `sssd_secret`.
 
-| Field | Example |
-|-------|---------|
-| `ldap_uri` | `ldap://simple-ldap.argocd.svc.cluster.local:389` |
-| `ldap_search_base` | `dc=example,dc=org` |
-| `ldap_bind_dn` | `cn=admin,dc=example,dc=org` (omit for anonymous bind) |
-| `ldap_bind_password` | the bind password |
+The plugin takes only the Secret's *name*. It never sees your directory credentials, so they never appear in an
+ArgoCD `Application` spec — and because you author the file, you control the TLS settings rather than inheriting
+defaults from this chart.
 
-This generates the login node's `sssd.conf` for you. Using the same directory the rest of the platform authenticates
-against means Slurm job ownership, fairshare and accounting all attribute to the right person.
+### Create the Secret
 
-> TLS verification is disabled on the LDAP connection (`ldap_tls_reqcert = never`), which is appropriate for an
-> in-cluster directory reached over the pod network. Front the directory with TLS you actually validate before
-> pointing this at anything outside the cluster.
+The Secret must live in `cluster_namespace` and use the key `sssd.conf`. Create the namespace first if it does not
+exist yet — the plugin will adopt it on install:
+
+```sh
+kubectl create namespace slurm
+kubectl create secret generic slurm-sssd-conf \
+  --namespace slurm \
+  --from-file=sssd.conf=./sssd.conf
+```
+
+Then set `sssd_secret` to `slurm-sssd-conf`.
+
+> Install the plugin **after** the Secret exists. The login pod mounts it at startup and will not become ready if it
+> is missing. If you have already installed, create the Secret and then edit `sssd_secret` — the plugin is `editable`.
+
+### What `sssd.conf` should contain
+
+A working example against an OpenLDAP directory, **with TLS verified**:
+
+```ini
+[sssd]
+services = nss,pam
+domains = LDAP
+
+[nss]
+filter_groups = root,slurm
+filter_users = root,slurm
+
+[pam]
+
+[domain/LDAP]
+id_provider = ldap
+auth_provider = ldap
+
+ldap_uri = ldaps://simple-ldap.simple-ldap.svc.cluster.local:636
+ldap_search_base = dc=example,dc=org
+
+# Omit both lines for an anonymous bind.
+ldap_default_bind_dn = cn=admin,dc=example,dc=org
+ldap_default_authtok = CHANGEME
+
+# Verify the directory's certificate. Mount your CA into the login pod and point at it here.
+ldap_tls_reqcert = demand
+ldap_tls_cacert = /etc/ssl/certs/ca-certificates.crt
+
+cache_credentials = true
+enumerate = true
+```
+
+If you must use plain `ldap://`, set `ldap_id_use_start_tls = true` so the connection is upgraded — otherwise every
+user's password crosses the pod network in cleartext on each login, since `auth_provider = ldap` authenticates by
+binding as the user.
+
+### Your entries need POSIX attributes
+
+SSSD creates **Unix accounts** on the login node, so directory entries must carry `objectClass: posixAccount` with
+`uidNumber`, `gidNumber`, `homeDirectory` and `loginShell`. A directory that only backs application login often has
+just `uid` and `userPassword`, which is enough to authenticate but not enough to build a Unix user.
+
+The failure mode is quiet: the bind succeeds, `id <user>` returns nothing, and SSH rejects the login. Check one
+existing entry before wiring this up:
+
+```sh
+kubectl exec -n slurm deploy/<release>-slurm-login-slinky -- getent passwd <user>
+```
+
+### Using the Simple LDAP plugin
+
+The Simple LDAP plugin deploys OpenLDAP as Service `simple-ldap` in namespace `simple-ldap`, so the in-cluster URI is
+`ldap://simple-ldap.simple-ldap.svc.cluster.local:389` and the base DN derives from its `domain` field
+(`example.org` becomes `dc=example,dc=org`). Create users there as `posixAccount` entries via phpLDAPadmin.
+
+Pointing both Juno and Slurm at the same directory means job ownership, fairshare and accounting attribute to the
+right person. Note that this is a **separate authentication** — there is no SSO from Hubble, so users enter their
+directory password at the SSH prompt, and Juno's group/role mapping does not translate into Unix groups or Slurm
+associations (those are managed with `sacctmgr`).
 
 ---
 

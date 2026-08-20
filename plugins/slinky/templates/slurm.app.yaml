@@ -72,32 +72,14 @@ spec:
               enabled: true
               nodesets:
                 - ALL
-          {{- if and .Values.login_enabled .Values.ldap_uri }}
+          {{- if and .Values.login_enabled .Values.sssd_secret }}
+          # User identity for the login node. Supplied as a Secret reference rather than
+          # generated from fields, so the directory credentials never appear in this
+          # Application's spec, and the administrator controls the TLS settings.
           sssd:
-            conf: |
-              [sssd]
-              services = nss,pam
-              domains = LDAP
-
-              [nss]
-              filter_groups = root,slurm
-              filter_users = root,slurm
-
-              [pam]
-
-              [domain/LDAP]
-              id_provider = ldap
-              auth_provider = ldap
-              ldap_uri = {{ .Values.ldap_uri }}
-              ldap_search_base = {{ .Values.ldap_search_base }}
-              {{- if .Values.ldap_bind_dn }}
-              ldap_default_bind_dn = {{ .Values.ldap_bind_dn }}
-              ldap_default_authtok = {{ .Values.ldap_bind_password }}
-              {{- end }}
-              ldap_id_use_start_tls = false
-              ldap_tls_reqcert = never
-              cache_credentials = true
-              enumerate = true
+            secretRef:
+              name: {{ .Values.sssd_secret | quote }}
+              key: sssd.conf
           {{- end }}
           {{- if .Values.login_enabled }}
           loginsets:

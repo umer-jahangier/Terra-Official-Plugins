@@ -68,27 +68,11 @@ fields:
     default: ""
     type: string
     secret: true
-  - name: ldap_uri
-    description: LDAP URI for login node user identity, e.g. `ldap://simple-ldap.argocd.svc.cluster.local:389`. Leave empty for local accounts only, in which case ordinary users cannot sign in.
+  - name: sssd_secret
+    description: Name of a Secret in the Slurm namespace holding an `sssd.conf` under key `sssd.conf`, giving the login node user identity. Create it before installing — see the Slinky plugin README for the file's structure. Leave empty for local accounts only.
     required: false
     default: ""
     type: string
-  - name: ldap_search_base
-    description: LDAP search base DN, e.g. `dc=example,dc=org`. Required when an LDAP URI is set.
-    required: false
-    default: ""
-    type: string
-  - name: ldap_bind_dn
-    description: Bind DN used to query the directory, e.g. `cn=admin,dc=example,dc=org`. Leave empty for anonymous bind.
-    required: false
-    default: ""
-    type: string
-  - name: ldap_bind_password
-    description: Password for the bind DN. Leave empty for anonymous bind.
-    required: false
-    default: ""
-    type: string
-    secret: true
 plugins:
   # Release name "slinky" matters: it determines the Slurm login Service name
   # ("slinky-slurm-login-slinky"), which is the default the Slurm Login workload
@@ -112,13 +96,7 @@ plugins:
         reference: accounting_enabled
       accounting_db_password:
         reference: accounting_db_password
-      ldap_uri:
-        reference: ldap_uri
-      ldap_search_base:
-        reference: ldap_search_base
-      ldap_bind_dn:
-        reference: ldap_bind_dn
-      ldap_bind_password:
-        reference: ldap_bind_password
+      sssd_secret:
+        reference: sssd_secret
   - plugin: Slurm Login
     name: slinky-login
