@@ -1,9 +1,0 @@
----
-# Created ahead of the Slurm cluster (wave 2) so the bundled accounting database
-# in wave 1 has a namespace to land in.
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: {{ .Values.cluster_namespace }}
-  annotations:
-    argocd.argoproj.io/sync-wave: "0"

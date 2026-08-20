@@ -5,6 +5,11 @@
 ---
 # Accounting database for slurmdbd.
 #
+# Lands in cluster_namespace, which the administrator creates before installing
+# (it must already exist to hold the required sssd Secret). The plugin
+# deliberately does not create or own that namespace, so uninstalling never
+# destroys the Secret, this database, or the controller's state volume.
+#
 # The names below are not arbitrary: the upstream Slurm chart's default
 # accounting.storageConfig points at host "mariadb", database "slurm_acct_db",
 # user "slurm", and reads the password from secret "mariadb-password" key

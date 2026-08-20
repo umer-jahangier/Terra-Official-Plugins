@@ -52,7 +52,6 @@ Three ArgoCD Applications plus the accounting database, ordered by sync wave:
 | Wave | Resource | Chart / Kind | Namespace |
 |------|----------|--------------|-----------|
 | 0 | `<release>-slinky-crds` | `slurm-operator-crds` | `slinky` |
-| 0 | `cluster_namespace` | `Namespace` | — |
 | 1 | `<release>-slinky-operator` | `slurm-operator` | `slinky` |
 | 1 | `mariadb` | `StatefulSet` + `Service` + `Secret` (only when `accounting_enabled`) | `cluster_namespace` |
 | 2 | `<release>-slurm` | `slurm` | `cluster_namespace` (default `slurm`) |
@@ -60,6 +59,10 @@ Three ArgoCD Applications plus the accounting database, ordered by sync wave:
 The three charts come from SchedMD's OCI registry at `ghcr.io/slinkyproject/charts`. The wave ordering matters: the
 CRDs must be established before the operator, and both before any Slurm custom resource; the database must be up
 before `slurmdbd` tries to connect.
+
+The plugin does **not** create `cluster_namespace` — you create it yourself before installing, since it must already
+exist to hold the required `sssd_secret`. That also means uninstalling the plugin never deletes your directory
+Secret, the accounting database, or the controller's state-save volume.
 
 ### What this plugin does *not* install
 
