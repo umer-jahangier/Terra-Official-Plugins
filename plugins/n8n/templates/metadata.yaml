@@ -59,7 +59,7 @@ data:
     - name: N8N_ENCRYPTION_KEY
       description: Custom key n8n uses to encrypt stored credentials. Set this to keep credentials decryptable across restarts/re-deploys.
     - name: N8N_PROXY_HOPS
-      description: Number of reverse proxies in front of n8n. Set to "1" so webhook nodes see the real caller IP rather than the ingress IP.
+      description: Number of reverse proxies in front of n8n. Set to "2" for the ingress controller and the nginx sidecar, so webhook nodes see the real caller IP rather than the ingress IP.
     - name: EXECUTIONS_DATA_PRUNE
       description: Prunes old execution records ("true" or "false"). Without pruning, execution history grows until the volume fills.
     - name: EXECUTIONS_DATA_MAX_AGE

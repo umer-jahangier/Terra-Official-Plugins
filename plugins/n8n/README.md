@@ -68,7 +68,7 @@ Genesis lets you add arbitrary environment variables to the workload at launch t
 | Variable | Description |
 |----------|--------------|
 | `N8N_ENCRYPTION_KEY` | Custom key n8n uses to encrypt stored credentials. Set this to keep credentials decryptable across restarts/re-deploys. |
-| `N8N_PROXY_HOPS` | Number of reverse proxies in front of n8n. Set to `1` so webhook nodes see the real caller IP rather than the ingress IP. |
+| `N8N_PROXY_HOPS` | Number of reverse proxies in front of n8n. Set to `2` — the cluster ingress controller and the nginx sidecar — so webhook nodes see the real caller IP rather than the ingress IP. Add one for any further proxy in front of the ingress controller, such as a cloud load balancer that appends to `X-Forwarded-For`. |
 | `EXECUTIONS_DATA_PRUNE` | Prunes old execution records (`true` or `false`). Without pruning, execution history grows until the volume fills. |
 | `EXECUTIONS_DATA_MAX_AGE` | Hours of execution history to keep when pruning is enabled (e.g. `336` for two weeks). |
 | `N8N_DIAGNOSTICS_ENABLED` | Set to `false` to disable outbound telemetry. |
