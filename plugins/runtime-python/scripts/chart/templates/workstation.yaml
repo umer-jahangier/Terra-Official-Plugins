@@ -87,7 +87,7 @@ spec:
             - name: GID
               value: {{ .Values.guid | quote }}
             - name: PREFIX
-              value: {{ printf "/polaris/%s/" .Values.name | quote }}
+              value: {{ printf "/%s/polaris/%s/" .Release.Namespace .Values.name | quote }}
             - name: GIT_URL
               value: {{ .Values.git_url | quote }}
             - name: SOURCE_PATH

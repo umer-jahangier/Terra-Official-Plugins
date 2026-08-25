@@ -88,7 +88,7 @@ Genesis lets you add arbitrary environment variables to the workload at launch t
 - GPU-accelerated inference requires the **NVIDIA GPU Operator** plugin to be installed on the cluster
 - The model cache PVC is mounted at `/models` and set as `HF_HUB_CACHE` — downloaded models persist across container restarts
 - For gated models (e.g. Llama, Mistral), set `hf_token` to a HuggingFace token that has accepted the model license — the token is stored in a Kubernetes Secret and injected as the `HF_TOKEN` environment variable
-- The nginx sidecar rewrites the path prefix: requests to `/vllm/<workload-name>/v1/...` are forwarded to vLLM at `/v1/...` on port 8001 — the API is fully OpenAI-compatible
+- The nginx sidecar rewrites the path prefix: requests to `/<namespace>/vllm/<workload-name>/v1/...` are forwarded to vLLM at `/v1/...` on port 8001 — the API is fully OpenAI-compatible
 - Health checks use `/health` on port 8001 with a generous startup grace period (3600s max) to account for model loading time
 - vLLM runs as non-root with `fsGroup: 1000`
 - Supported actions via Hubble: `restart`, `stop`

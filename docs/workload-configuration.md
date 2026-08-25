@@ -134,27 +134,35 @@ that Kuiper creates after resolving EC2 DNS post-launch.
 
 ```yaml
 annotations:
-  kuiper.juno-innovations.com/ingress-hide: "/healthz,/admin,/metrics"
+  kuiper.juno-innovations.com/ingress-hide: "/{{ .Release.Namespace }}/myapp/{{ .Values.name }}/healthz,/{{ .Release.Namespace }}/myapp/{{ .Values.name }}/admin"
 ```
 
 **Applies to:** Ingress  
-**Value format:** comma-separated URL paths
+**Value format:** comma-separated URL paths — each must be the **full** rendered path
 
 Hides the listed URL paths from the endpoint list shown in the Hubble UI. Use this to suppress
 internal paths like health checks or admin endpoints.
+
+Matching is an exact string comparison against the path in the Ingress rule, so a bare sub-path
+like `/healthz` will not match a rule at `/<namespace>/myapp/<name>/healthz` — it silently hides
+nothing. Always write the complete path.
 
 ---
 
 ```yaml
 annotations:
-  kuiper.juno-innovations.com/ingress-extras: "/app/index.html,/app/login"
+  kuiper.juno-innovations.com/ingress-extras: "/{{ .Release.Namespace }}/myapp/{{ .Values.name }}/index.html"
 ```
 
 **Applies to:** Ingress  
-**Value format:** comma-separated sub-paths
+**Value format:** comma-separated paths — each must **start with** an existing ingress path
 
 Appends extra sub-paths to existing ingress endpoints in the Hubble UI without creating new
-Ingress rules. Each extra path is matched to the closest existing ingress path.
+Ingress rules. Each extra path is matched to the longest existing ingress path it starts with,
+and the remainder is appended to that endpoint.
+
+Because matching is by prefix, an extra must begin with the full rendered ingress path. A bare
+sub-path like `/index.html` starts with no existing rule and is dropped without warning.
 
 ---
 

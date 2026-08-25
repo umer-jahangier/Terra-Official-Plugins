@@ -49,6 +49,8 @@ data:
       default: 5Gi
       required: true
       type: string
+    - name: icon
+      default: https://raw.githubusercontent.com/juno-fx/Terra-Official-Plugins/refs/heads/main/plugins/gitea/assets/logo.png
   env_hints: |
     - name: GITEA__mailer__ENABLED
       description: Enables outbound email (set to "true") for notifications and password resets.

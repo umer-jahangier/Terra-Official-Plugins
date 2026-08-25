@@ -12,7 +12,7 @@ spec:
     - host: {{ .Values.host }}
       http:
         paths:
-          - path: "/filebrowser/{{ .Values.name }}/"
+          - path: "/{{ .Release.Namespace }}/filebrowser/{{ .Values.name }}/"
             pathType: Prefix
             backend:
               service:

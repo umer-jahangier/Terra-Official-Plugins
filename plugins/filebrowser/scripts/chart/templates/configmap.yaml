@@ -10,7 +10,7 @@ data:
     port: "8080"
     address: "0.0.0.0"
     root: "{{ .Values.root }}"
-    baseURL: "/filebrowser/{{ .Values.name }}"
+    baseURL: "/{{ .Release.Namespace }}/filebrowser/{{ .Values.name }}"
     log: "stdout"
     database: "/data/filebrowser.db"
     noauth: true
