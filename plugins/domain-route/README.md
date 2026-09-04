@@ -68,6 +68,23 @@ Two kinds of target:
 
 ---
 
+## Serving an App From a Helios or Wetty Session
+
+The common case: a user is working in a session and starts an application on port 8000. Publishing it does not require exposing the session.
+
+1. Note the workload instance name as shown in Hubble
+2. Install this plugin into the project with `target_kind: workload`, `target_name` set to that instance, and `target_port` set to the port the application listens on
+3. Point the hostname at the cluster ingress address, or set `publish_dns` and let ExternalDNS create the record
+
+The session keeps serving its desktop or terminal on its own authenticated route, on port 3000 for Helios and 3001 for Wetty. Only the port named here is published, and it carries whatever authentication you configure below rather than the platform session gate.
+
+Two things to know per template:
+
+- **Helios** has no NetworkPolicy, so any port works as soon as the application binds `0.0.0.0`
+- **Wetty** admits inbound traffic on port 3001 only, and denies all outbound traffic, so its `published_ports` and `allow_egress` fields have to be set on the session before a route to it can work
+
+---
+
 ## Finding the Target
 
 For a workload target, `target_name` is the workload instance name as shown in Hubble, and `selector_label` is the label that workload's chart puts on its pods. If a route returns 503, the selector matched nothing:
