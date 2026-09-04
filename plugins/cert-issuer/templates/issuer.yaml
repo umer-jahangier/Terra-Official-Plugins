@@ -1,4 +1,7 @@
 {{- $secretName := .Values.dns_secret_name | default (printf "%s-dns-credential" .Values.issuer_name) }}
+{{- if and (eq .Values.solver "dns01") (eq .Values.dns_provider "cloudflare") (not .Values.dns_secret_name) (not .Values.dns_token) }}
+{{- fail "the cloudflare dns01 solver needs a credential - set dns_token, or create a Secret in the cert-manager namespace and name it in dns_secret_name (see the plugin README)" }}
+{{- end }}
 {{- if and (eq .Values.solver "dns01") (not .Values.dns_secret_name) .Values.dns_token }}
 ---
 apiVersion: v1
