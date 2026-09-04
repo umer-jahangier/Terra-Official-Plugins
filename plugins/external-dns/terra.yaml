@@ -47,7 +47,7 @@ fields:
     default: "default"
     type: string
   - name: policy
-    description: "upsert-only never deletes DNS records when the backing Service/Ingress is removed. sync also deletes them — only use once you trust the setup."
+    description: "upsert-only never deletes DNS records when the backing Service/Ingress is removed. sync also deletes them, only use once you trust the setup."
     required: true
     default: upsert-only
     type: select
@@ -82,6 +82,6 @@ fields:
     default: "external-dns.alpha.kubernetes.io/enable=true"
     type: string
   - name: extra_values
-    description: "Additional raw Helm values (YAML) merged into the chart — use this for anything not covered above (e.g. Cloudflare zone_id_filter/proxied, legacy API key+email auth)."
+    description: "Additional raw Helm values (YAML) merged into the chart, use this for anything not covered above (e.g. Cloudflare zone_id_filter/proxied, legacy API key+email auth)."
     required: false
     type: string
