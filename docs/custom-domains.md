@@ -84,6 +84,21 @@ Where an application has no login of its own, put one in front of the route with
 
 ---
 
+## Serving an Application From a Session
+
+A workload template's `hostname` field publishes the workload itself. It does not cover the other common case: a user working in a Helios or Wetty session who starts an application on some port and wants it reachable, the way it would be on a VPS.
+
+That case needs no change to the session's chart. A Service is only a label selector, so the Domain Route plugin creates its own Service against the session's pods on the application's port and routes a hostname to it. The session keeps serving its desktop or terminal on its existing authenticated route, and only the named port is published.
+
+Two constraints decide whether this works for a given template:
+
+- the application must bind `0.0.0.0` inside the session rather than `127.0.0.1`, or nothing outside the pod can reach it
+- a NetworkPolicy on the workload must admit the port. Helios has none, so any port works. Jupyter admits any port from the proxy namespace. Wetty admits port 3001 only and denies all egress, so its `published_ports` and `allow_egress` fields have to be set
+
+A template that restricts ports in a NetworkPolicy should expose a field for the extra ones, rather than requiring the policy to be edited by hand.
+
+---
+
 ## The Supporting Plugins
 
 | Plugin | Role |
@@ -91,7 +106,7 @@ Where an application has no login of its own, put one in front of the route with
 | **Certificate Manager** | Installs cert-manager. On its own it issues nothing |
 | **Certificate Issuer** | Creates the ClusterIssuer named in `tls_issuer`. HTTP-01, or DNS-01 for wildcards |
 | **ExternalDNS** | Creates DNS records for routes carrying the enable annotation |
-| **Domain Route** | Publishes a hostname for a workload whose chart has no `hostname` field, or for an application listening inside a Helios or Wetty session |
+| **Domain Route** | Publishes a hostname for a workload whose chart has no `hostname` field, or for an application listening inside a Helios or Wetty session. See above |
 | **Domain Manager** | A page in Genesis listing published hostnames, the record each needs, and whether it resolves |
 
 A working setup needs Certificate Manager and Certificate Issuer. ExternalDNS is optional: without it, add the record by hand, which the Domain Manager page spells out for you.
