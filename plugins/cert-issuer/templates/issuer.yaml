@@ -1,5 +1,5 @@
 {{- $secretName := .Values.dns_secret_name | default (printf "%s-dns-credential" .Values.issuer_name) }}
-{{- if and (eq .Values.solver "dns01") (not .Values.dns_secret_name) }}
+{{- if and (eq .Values.solver "dns01") (not .Values.dns_secret_name) .Values.dns_token }}
 ---
 apiVersion: v1
 kind: Secret
