@@ -1,6 +1,6 @@
 resource_id: domain-route
 name: Domain Route
-icon: https://raw.githubusercontent.com/juno-fx/Terra-Official-Plugins/refs/heads/main/plugins/metallb/assets/logo.png
+icon: https://github.com/juno-fx/Terra-Official-Plugins/blob/main/plugins/domain-route/assets/icon.svg?raw=true
 description: Publishes a running workload, or an application listening inside a Helios or Wetty session, at a custom domain with TLS and an optional DNS record. Install one per hostname you want to serve.
 category: Networking
 tags:

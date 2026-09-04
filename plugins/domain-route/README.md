@@ -1,6 +1,6 @@
 # Domain Route
 
-![Domain Route](https://raw.githubusercontent.com/juno-fx/Terra-Official-Plugins/refs/heads/main/plugins/metallb/assets/logo.png)
+![Domain Route](https://github.com/juno-fx/Terra-Official-Plugins/blob/main/plugins/domain-route/assets/icon.svg?raw=true)
 
 **Category:** Networking
 **Type:** Plugin / Application
