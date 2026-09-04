@@ -27,7 +27,7 @@ fields:
     required: true
     type: string
   - name: target_port
-    description: Port the application listens on. For a workload target this is the container port, which does not need to be published by the workload itself.
+    description: Port to send traffic to. For a workload target this is the container port, which does not need to be published by the workload itself. For a service target it is the port on that Service.
     required: true
     default: 8080
     type: int

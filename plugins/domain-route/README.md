@@ -54,7 +54,7 @@ Two kinds of target:
 | `hostname` | **string** · Required<br>Hostname to serve on, for example `app.example.com` |
 | `target_kind` | **select** · Required · Default: `workload`<br>`workload` selects pods by label, `service` points at an existing Service |
 | `target_name` | **string** · Required<br>Workload instance name, or Service name |
-| `target_port` | **int** · Required · Default: `8080`<br>Port the application listens on. For a workload target this does not need to be a published port |
+| `target_port` | **int** · Required · Default: `8080`<br>Port to send traffic to. For a workload target this is the container port and does not need to be published. For a service target it is the port on that Service |
 | `selector_label` | **select** · Optional · Default: `juno-innovations.com/workstation`<br>Label the target carries. Helios and the runtime templates use `juno-innovations.com/workstation`, most others use `kuiper.juno-innovations.com/kuiper-instance` |
 | `path` | **string** · Required · Default: `/`<br>Path prefix served on the hostname |
 | `backend_protocol` | **select** · Required · Default: `HTTP`<br>Protocol the target speaks. Helios serves HTTPS |
