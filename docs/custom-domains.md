@@ -54,7 +54,7 @@ spec:
 {{- end }}
 ```
 
-**The application is told it now lives at the root.** An application can only serve one base path at a time, so this is not optional. Whatever the chart uses to communicate the prefix has to switch to `/`: `PREFIX` for Helios and the runtime templates, `N8N_PATH` and `WEBHOOK_URL` for n8n, `WETTY_BASE` for Wetty. Any sidecar that rewrites the prefix has to serve the root instead.
+**The application is told it now lives at the root.** An application can only serve one base path at a time, so this is not optional. Whatever the chart uses to communicate the prefix has to switch to `/`: `PREFIX` for the runtime templates, `N8N_PATH` and `WEBHOOK_URL` for n8n. Any sidecar that rewrites the prefix has to serve the root instead.
 
 **The platform path redirects.** Since the application no longer answers on the old prefix, the existing Ingress gets a redirect rather than being removed:
 
@@ -77,8 +77,8 @@ There is no way around that inside the chart, so plugins make the exposure expli
 | Plugin | Requirement | Why |
 |--------|-------------|-----|
 | n8n | none | n8n has its own user management, which is the gate on that domain |
-| Helios, Wetty | `publicAccess` must be true | Setting only a hostname changes nothing, rather than publishing an unprotected desktop or terminal |
 | Runtime templates | `network_mode` must be `ingress-noauth` | The mode already states the application is served without the platform gate |
+| Sessions (Helios, Wetty) | publish through Domain Route | The session itself keeps its gated route; only the application port gets a hostname, with the application's login, basic auth, or a CIDR allow list in front |
 
 Where an application has no login of its own, put one in front of the route with the Domain Route plugin's `auth: basic`, or restrict the caller with a CIDR allow list.
 
