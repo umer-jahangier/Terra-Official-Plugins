@@ -37,6 +37,12 @@ n8n is an open-source workflow automation tool with a visual node-based interfac
 
 Once installed, the n8n schema is available in **Genesis**. From the Workloads page, author the template — users can then launch and provision n8n instances on demand through **Hubble**.
 
+### Updating an Existing Template
+
+When this plugin gains new fields, workload templates already authored in Genesis stay on the schema version they were created with, so the new fields do not appear on the launch form. Use the **Migrate** button on the template row to move it onto the new chart and fill them in.
+
+This matters because relaunching a workload is not enough. A workload created from an unmigrated template renders the old chart, so a newly added field appears to do nothing at all.
+
 ---
 
 ## Configuration
