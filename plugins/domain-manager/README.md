@@ -77,7 +77,6 @@ The page reads, and only reads:
 | `ingresses` | The hostnames served and the address the controller publishes |
 | `httproutes`, `gateways` | The same, on clusters running the Gateway API |
 | `certificates` | Whether cert-manager has issued each certificate |
-| `services` | Load balancer addresses |
 
 It has no write permission anywhere, holds no DNS provider credential, and changes nothing. Adding records is done in your DNS provider, or by the ExternalDNS plugin.
 
