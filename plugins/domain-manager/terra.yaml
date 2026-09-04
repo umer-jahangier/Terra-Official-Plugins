@@ -1,6 +1,6 @@
 resource_id: domain-manager
 name: Domain Manager
-icon: https://raw.githubusercontent.com/juno-fx/Terra-Official-Plugins/refs/heads/main/plugins/metallb/assets/logo.png
+icon: https://github.com/juno-fx/Terra-Official-Plugins/blob/main/plugins/domain-manager/assets/icon.svg?raw=true
 description: A page inside Genesis listing every hostname published from this cluster, the DNS record each one needs, whether that record currently points at the cluster, and the state of its certificate.
 category: Networking
 tags:

@@ -1,6 +1,6 @@
 # Domain Manager
 
-![Domain Manager](https://raw.githubusercontent.com/juno-fx/Terra-Official-Plugins/refs/heads/main/plugins/metallb/assets/logo.png)
+![Domain Manager](https://github.com/juno-fx/Terra-Official-Plugins/blob/main/plugins/domain-manager/assets/icon.svg?raw=true)
 
 **Category:** Networking
 **Type:** Dashboard
