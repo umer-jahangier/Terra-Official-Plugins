@@ -1,6 +1,6 @@
 resource_id: cert-issuer
 name: Certificate Issuer
-icon: https://raw.githubusercontent.com/juno-fx/Terra-Official-Plugins/refs/heads/main/plugins/cert-manager/assets/logo.png
+icon: https://github.com/juno-fx/Terra-Official-Plugins/blob/main/plugins/cert-issuer/assets/icon.svg?raw=true
 description: Creates the ACME ClusterIssuer that cert-manager needs before it can issue any certificate. Supports Let's Encrypt over HTTP-01, or DNS-01 with Route53 and Cloudflare for wildcard certificates. https://cert-manager.io/docs/configuration/acme/
 category: Infrastructure
 tags:

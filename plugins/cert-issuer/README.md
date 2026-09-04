@@ -1,6 +1,6 @@
 # Certificate Issuer
 
-![Certificate Issuer](https://raw.githubusercontent.com/juno-fx/Terra-Official-Plugins/refs/heads/main/plugins/cert-manager/assets/logo.png)
+![Certificate Issuer](https://github.com/juno-fx/Terra-Official-Plugins/blob/main/plugins/cert-issuer/assets/icon.svg?raw=true)
 
 **Category:** Infrastructure
 **Type:** Cluster Service
