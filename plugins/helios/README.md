@@ -59,6 +59,9 @@ These fields are configured when authoring the workload template in **Genesis** 
 | `rheaRepo` | **string** · Required · Default: `rhea`<br>Repository for the Rhea sidecar image |
 | `rheaTag` | **string** · Required · Default: `v1.2.3`<br>Rhea sidecar image tag |
 | `publicAccess` | **boolean** · Required · Default: `false`<br>Disable authentication and allow unauthenticated access to the workstation |
+| `hostname` | **string** · Optional<br>Serve this workload at its own domain, for example `desk.example.com`, instead of a path on the platform host. Requires `publicAccess` |
+| `tls_issuer` | **string** · Optional<br>cert-manager ClusterIssuer used to obtain the certificate for that domain |
+| `publish_dns` | **boolean** · Optional · Default: `false`<br>Annotate the route so the ExternalDNS plugin creates the DNS record |
 
 ### Custom Environment Variables
 
@@ -71,6 +74,16 @@ Genesis lets you add arbitrary environment variables to the workload at launch t
 | `SELKIES_FRAMERATE` | Streaming framerate for the desktop session, as a range (e.g. `15-60`) or fixed value (e.g. `30`).                 |
 | `DISABLE_VGL` | Disables the VirtualGL wrapper around the desktop session; apps needing it must be launched manually via `vglrun`. |
 | `REMOTE_PROTOCOL` | if set to "dcv" Helios will run Nice DCV rather than Selkies.                                                      |
+
+---
+
+## Serving on Your Own Domain
+
+Set `hostname` together with `publicAccess` and the workstation is served from the root of that domain instead of a path on the platform host. The old platform path redirects to the new address, so links in Hubble still land in the right place.
+
+`publicAccess` is required because the platform session cookie is scoped to the Orion host and is never sent to another domain, so the Hubble gate cannot protect a custom domain. Setting a hostname without it changes nothing, deliberately, rather than publishing an unprotected workstation.
+
+Add a DNS record for the hostname pointing at the cluster ingress address first, or set `publish_dns` and let the ExternalDNS plugin create it. The Domain Manager page shows the record to add and whether it currently resolves.
 
 ---
 

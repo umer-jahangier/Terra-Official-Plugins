@@ -67,6 +67,10 @@ spec:
               value: "{{ .Values.name }}"
             - name: NAMESPACE
               value: "{{ .Release.Namespace }}"
+            {{- if and .Values.hostname .Values.publicAccess }}
+            - name: WETTY_BASE
+              value: "/"
+            {{- end }}
             {{- if .Values.packages }}
             - name: PACKAGES
               value: "{{ .Values.packages }}"

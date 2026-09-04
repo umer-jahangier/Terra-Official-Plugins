@@ -59,6 +59,9 @@ These fields are configured when authoring the workload template in **Genesis** 
 | `nginx_repo` | **string** · Required · Default: `nginx`<br>nginx proxy image repository |
 | `nginx_tag` | **string** · Required · Default: `1.29.3`<br>nginx proxy image tag |
 | `publicAccess` | **boolean** · Required · Default: `false`<br>Disable authentication and allow unauthenticated browser access to the terminal |
+| `hostname` | **string** · Optional<br>Serve this workload at its own domain, for example `term.example.com`, instead of a path on the platform host. Requires `publicAccess` |
+| `tls_issuer` | **string** · Optional<br>cert-manager ClusterIssuer used to obtain the certificate for that domain |
+| `publish_dns` | **boolean** · Optional · Default: `false`<br>Annotate the route so the ExternalDNS plugin creates the DNS record |
 
 ### Custom Environment Variables
 
@@ -68,6 +71,16 @@ Wetty is a plain tmux/bash shell rather than an application with its own configu
 |----------|--------------|
 | `TZ` | Timezone for the shell session, e.g. `America/New_York`. |
 | `EDITOR` | Default text editor invoked by CLI tools (e.g. `vim`, `nano`). |
+
+---
+
+## Serving on Your Own Domain
+
+Set `hostname` together with `publicAccess` and the terminal is served from the root of that domain instead of a path on the platform host. The old platform path redirects to the new address, so links in Hubble still land in the right place.
+
+`publicAccess` is required because the platform session cookie is scoped to the Orion host and is never sent to another domain, so the Hubble gate cannot protect a custom domain. Setting a hostname without it changes nothing, deliberately, rather than publishing an unprotected terminal.
+
+Add a DNS record for the hostname pointing at the cluster ingress address first, or set `publish_dns` and let the ExternalDNS plugin create it. The Domain Manager page shows the record to add and whether it currently resolves.
 
 ---
 

@@ -7,6 +7,9 @@ metadata:
     {{- if not .Values.publicAccess }}
     nginx.ingress.kubernetes.io/auth-url: "http://hubble.{{ .Release.Namespace }}.svc.cluster.local:3000/api/auth-workstation/{{ .Values.name }}/"
     {{- end }}
+    {{- if and .Values.hostname .Values.publicAccess }}
+    nginx.ingress.kubernetes.io/permanent-redirect: "https://{{ .Values.hostname }}/"
+    {{- end }}
 spec:
   rules:
     - host: {{ .Values.host }}

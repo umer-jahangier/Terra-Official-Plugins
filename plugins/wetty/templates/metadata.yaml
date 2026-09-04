@@ -55,6 +55,19 @@ data:
       type: boolean
       required: true
       default: false
+    - name: hostname
+      description: "Serve this workload at its own domain, for example desk.example.com, instead of a path on the platform host. Requires publicAccess, since the platform session cookie is not sent to another domain"
+      type: string
+      required: false
+    - name: tls_issuer
+      description: "cert-manager ClusterIssuer used to obtain the certificate for that domain, for example letsencrypt-prod"
+      type: string
+      required: false
+    - name: publish_dns
+      description: "Annotate the route so the ExternalDNS plugin creates the DNS record for that domain"
+      type: boolean
+      required: false
+      default: false
     - name: ingressNamespace
       description: "Namespace of the ingress controller for plugin access"
       type: string

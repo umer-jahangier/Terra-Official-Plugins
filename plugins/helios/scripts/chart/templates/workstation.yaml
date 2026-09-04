@@ -147,7 +147,11 @@ spec:
             - name: GID
               value: "{{ .Values.guid }}"
             - name: PREFIX
+              {{- if and .Values.hostname .Values.publicAccess }}
+              value: "/"
+              {{- else }}
               value: "/{{ .Release.Namespace }}/polaris/{{ .Values.name }}/"
+              {{- end }}
             {{- range .Values.env }}
             - name: {{ .name | quote }}
               value: {{ .value | quote }}

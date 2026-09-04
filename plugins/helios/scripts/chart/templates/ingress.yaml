@@ -9,6 +9,9 @@ metadata:
     {{- end }}
     nginx.ingress.kubernetes.io/use-regex: "true"
     nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    {{- if and .Values.hostname .Values.publicAccess }}
+    nginx.ingress.kubernetes.io/permanent-redirect: "https://{{ .Values.hostname }}/"
+    {{- end }}
 spec:
   rules:
     - host: {{ .Values.host }}

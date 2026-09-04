@@ -10,6 +10,9 @@ cpuLimit: null
 memoryLimit: null
 gpu: false
 publicAccess: false
+hostname: ""
+tls_issuer: ""
+publish_dns: false
 idx: 0
 guid: 0
 puid: 0
