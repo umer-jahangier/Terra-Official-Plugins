@@ -110,4 +110,4 @@ Uninstall the Kindwell plugins from Terra, reinstall any official copies that we
 
 ## Keeping this branch current
 
-When a pull request branch changes or official `main` moves, rebuild the branch from `main` by merging the pull request branches again. The icon commit is the only change that exists here alone.
+When a pull request branch changes or official `main` moves, rebuild the branch from `main` by merging the pull request branches again. The icon commit and this file are the only changes that exist here alone.
