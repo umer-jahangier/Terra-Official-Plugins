@@ -1,6 +1,6 @@
 resource_id: external-dns
 name: ExternalDNS
-icon: https://raw.githubusercontent.com/juno-fx/Terra-Official-Plugins/refs/heads/main/plugins/external-dns/assets/logo.png
+icon: https://raw.githubusercontent.com/umer-jahangier/Terra-Official-Plugins/refs/heads/kindwell/plugins/external-dns/assets/logo.png
 description: Synchronizes exposed Kubernetes Services and Ingresses with external DNS providers (AWS Route53, Cloudflare). https://github.com/kubernetes-sigs/external-dns
 category: Networking
 tags:
