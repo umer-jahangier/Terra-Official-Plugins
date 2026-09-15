@@ -50,6 +50,10 @@ data:
       type: string
       required: true
       default: "1.29.3"
+    - name: published_ports
+      description: "Extra container ports the ingress controller may reach, so an application running inside the session can be published with the Domain Route plugin. Comma separated, for example 8000,8080. The terminal itself is always reachable"
+      type: string
+      required: false
     - name: publicAccess
       description: "Allow public access (disable authentication)"
       type: boolean

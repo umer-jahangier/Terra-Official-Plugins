@@ -59,6 +59,7 @@ These fields are configured when authoring the workload template in **Genesis** 
 | `nginx_repo` | **string** · Required · Default: `nginx`<br>nginx proxy image repository |
 | `nginx_tag` | **string** · Required · Default: `1.29.3`<br>nginx proxy image tag |
 | `publicAccess` | **boolean** · Required · Default: `false`<br>Disable authentication and allow unauthenticated browser access to the terminal |
+| `published_ports` | **string** · Optional<br>Extra container ports the ingress controller may reach, comma separated, for example `8000,8080`. Needed to publish an application running inside the session |
 
 ### Custom Environment Variables
 
@@ -68,6 +69,27 @@ Wetty is a plain tmux/bash shell rather than an application with its own configu
 |----------|--------------|
 | `TZ` | Timezone for the shell session, e.g. `America/New_York`. |
 | `EDITOR` | Default text editor invoked by CLI tools (e.g. `vim`, `nano`). |
+
+---
+
+## Publishing an App Running in the Session
+
+The terminal is served on port 3001 and the NetworkPolicy admits traffic on that port only, so an application started inside the session on another port is unreachable from outside the pod even with a route pointing at it. The failure looks like a timeout rather than an error, which makes it hard to place.
+
+List the ports in `published_ports` and the policy will admit them as well. From there, the Domain Route plugin publishes the port at a hostname with TLS.
+
+Outbound traffic is governed by the workspace rules under Network in Genesis, so nothing here touches egress.
+
+The terminal keeps its own authenticated route throughout. Publishing an application port does not expose the terminal, and `publicAccess` stays off.
+
+A session serving an application therefore looks like this:
+
+| Field | Value |
+|-------|-------|
+| `published_ports` | `8000`, the port your application listens on |
+| `publicAccess` | left off, the terminal stays authenticated |
+
+then one Domain Route install pointing at the session on port 8000.
 
 ---
 
