@@ -31,9 +31,9 @@ No username or token is needed, the repository is public.
 
 ## Before installing anything
 
-**n8n, wetty and the four runtimes exist in both sources.** Uninstall the official copy of any of them before installing the Kindwell copy, or two installs will manage the same objects. The new plugins, cert-issuer, external-dns, domain-route and domain-manager, have no official counterpart and install cleanly alongside everything else.
+**n8n, wetty and the four runtimes exist in both sources. Do not uninstall the official copies.** These plugins only create ConfigMaps named after the Install Name, so a Kindwell copy installed under a different name, for example `n8n-kindwell`, sits alongside the official one without touching it, and running workloads and their templates stay exactly as they are. Author a new template from the Kindwell copy for testing. The new plugins, cert-issuer, external-dns, domain-route and domain-manager, have no official counterpart and install cleanly alongside everything else.
 
-**Workload templates must be migrated.** After installing n8n or a runtime from this source, open the template in Genesis and use **Migrate** so the new fields appear on the launch form. Relaunching a workload from an unmigrated template renders the old chart.
+**Templates come from the install they were authored against.** A template authored from the official n8n keeps rendering the official chart. To test the new fields, create a new template in Genesis from the Kindwell copy's schema.
 
 **Creating Secrets needs cluster access** in the `cert-manager` and `external-dns` namespaces, which a project-scoped k9s session does not have. Use Headlamp, or `sudo k3s kubectl` on a control plane node.
 
@@ -106,7 +106,7 @@ Passing: the page opens in Genesis at `/domains` and lists every hostname from t
 
 ## Rolling back
 
-Uninstall the Kindwell plugins from Terra, reinstall any official copies that were removed, then delete the `kindwell` source. Certificates and DNS records created during testing are not removed automatically.
+Delete the templates authored from Kindwell copies, uninstall the Kindwell plugins from Terra, then delete the `kindwell` source. Official installs were never touched, so nothing needs reinstalling. Certificates and DNS records created during testing are not removed automatically.
 
 ## Keeping this branch current
 
