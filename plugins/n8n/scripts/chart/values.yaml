@@ -27,7 +27,7 @@ timezone: "America/New_York"
 storage_class:
 storage_size: "10Gi"
 domain: ""
-tls_issuer: ""
+tls_issuer: letsencrypt-prod
 publish_dns: false
 webhooks_public: false
 webhook_rate_limit: 10

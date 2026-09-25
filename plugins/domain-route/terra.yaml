@@ -53,8 +53,9 @@ fields:
       - HTTP
       - HTTPS
   - name: tls_issuer
-    description: cert-manager ClusterIssuer used to obtain a certificate, for example letsencrypt-prod. Leave empty to serve with the ingress controller's default certificate instead.
+    description: cert-manager ClusterIssuer used to obtain a certificate. Defaults to letsencrypt-prod, the issuer the Certificate Issuer plugin creates. Leave empty to serve with the ingress controller's default certificate instead.
     required: false
+    default: letsencrypt-prod
     type: string
   - name: publish_dns
     description: Annotate the route so the ExternalDNS plugin creates the record for this hostname.

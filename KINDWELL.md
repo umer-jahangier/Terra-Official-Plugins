@@ -11,6 +11,7 @@ This branch is a Terra source for validating the custom domain work on a live cl
 | n8n | `domain` field, served at `<name>.<domain>` | #703 |
 | runtime-python, js, go, cpp | `domain` field under `ingress-noauth` | #705 |
 | wetty | `published_ports` for in-session apps | fork only, #708 was closed |
+| domain-route, n8n, runtimes | `tls_issuer` defaults to `letsencrypt-prod`, so every published hostname gets its own managed certificate | fork only, upstream keeps it empty since issuer names are cluster specific |
 | docs | custom domain convention | #706 |
 
 Every chart change renders byte for byte what official `main` renders when its new fields are left empty.

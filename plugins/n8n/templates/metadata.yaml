@@ -46,9 +46,10 @@ data:
       type: string
       required: false
     - name: tls_issuer
-      description: "cert-manager ClusterIssuer used to obtain the certificate for that domain, for example letsencrypt-prod. Only used when a domain is set"
+      description: "cert-manager ClusterIssuer used to obtain the certificate for that domain. Defaults to letsencrypt-prod, the issuer the Certificate Issuer plugin creates. Only used when a domain is set"
       type: string
       required: false
+      default: "letsencrypt-prod"
     - name: publish_dns
       description: "Annotate the route so the ExternalDNS plugin creates the DNS record for that domain"
       type: boolean

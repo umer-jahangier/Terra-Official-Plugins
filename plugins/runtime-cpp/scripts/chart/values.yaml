@@ -31,5 +31,5 @@ selector:
 plugins: []
 _kuiper:
 domain: ""
-tls_issuer: ""
+tls_issuer: letsencrypt-prod
 publish_dns: false
